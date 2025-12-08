@@ -6,12 +6,12 @@ using System.Runtime.InteropServices;
 // набора атрибутов. Измените значения этих атрибутов для изменения сведений,
 // связанных со сборкой.
 [assembly: AssemblyTitle("PingMonitor")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Инструмент для мониторинга доступности сетевых узлов в реальном времени. Заменяет множество окон cmd ping")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Alexander Valyavin")]
 [assembly: AssemblyProduct("PingMonitor")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyTrademark("Copyright © 2025 Alexander Valyavin Все права защищены.")]
 [assembly: AssemblyCulture("")]
 
 // Установка значения False для параметра ComVisible делает типы в этой сборке невидимыми

@@ -104,6 +104,40 @@ namespace PingMonitor
             btnSettings.MouseEnter += (s, e) => btnSettings.ForeColor = Color.White; btnSettings.MouseLeave += (s, e) => btnSettings.ForeColor = Color.Gray;
             panel1.Controls.Add(btnSettings);
 
+            // --- ПРАВАЯ ЧАСТЬ ---
+
+            // 3.5. Кнопка ИНФО (i) - НОВОЕ
+            Label btnInfo = new Label();
+            btnInfo.Text = "ℹ"; // Символ информации
+            btnInfo.Font = new Font("Segoe UI", 14); // Тот же шрифт, что у шестеренки
+            btnInfo.ForeColor = Color.Gray;
+            btnInfo.AutoSize = true;
+            btnInfo.Cursor = Cursors.Hand;
+            btnInfo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            // Сдвигаем левее настроек (145 + 30 = 175)
+            btnInfo.Location = new Point(panel1.Width - 175, 25);
+
+            btnInfo.Click += (s, e) => {
+                new AboutForm().ShowDialog(); // Открываем окно справки
+            };
+
+            btnInfo.MouseEnter += (s, e) => btnInfo.ForeColor = Color.White;
+            btnInfo.MouseLeave += (s, e) => btnInfo.ForeColor = Color.Gray;
+
+            // Добавляем подсказку
+            ToolTip ttInfo = new ToolTip();
+            ttInfo.SetToolTip(btnInfo, "Справка и инструкция");
+
+            panel1.Controls.Add(btnInfo);
+
+
+            // 4. Настройки (Шестеренка) - ОСТАВЛЯЕМ КАК БЫЛО
+            //Label btnSettings = new Label();
+            // ... (твой код btnSettings) ...
+            btnSettings.Location = new Point(panel1.Width - 145, 25);
+            // ...
+
             checkAlwaysOnTop = new CheckBox { Appearance = Appearance.Button, Text = "📌", TextAlign = ContentAlignment.MiddleCenter, AutoSize = false, Size = new Size(40, 27), Location = new Point(panel1.Width - 110, 27), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.Gray, Cursor = Cursors.Hand };
             checkAlwaysOnTop.FlatAppearance.BorderSize = 0;
             checkAlwaysOnTop.CheckedChanged += (s, e) => { TopMost = checkAlwaysOnTop.Checked; if (checkAlwaysOnTop.Checked) { checkAlwaysOnTop.BackColor = Color.FromArgb(46, 204, 113); checkAlwaysOnTop.ForeColor = Color.Black; } else { checkAlwaysOnTop.BackColor = Color.FromArgb(60, 60, 60); checkAlwaysOnTop.ForeColor = Color.Gray; } };
