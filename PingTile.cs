@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using System.Drawing.Drawing2D; // Нужно для графики
+using System.Drawing.Drawing2D;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.Text;
 
 namespace PingMonitor
 {
@@ -16,52 +17,153 @@ namespace PingMonitor
         private const int TileWidth = 240;
         private const int TileHeight = 110;
 
-        // Цвета
         private readonly Color ColorBgNormal = Color.FromArgb(45, 45, 48);
         private readonly Color ColorTextMain = Color.White;
         private readonly Color ColorTextDim = Color.LightGray;
 
-        // Данные
         private string _address;
         private string _alias;
         private CancellationTokenSource _cts;
 
-        // История для статистики (успех/неуспех)
-        private Queue<bool> _history = new Queue<bool>();
-        // История для ГРАФИКА (значения пинга)
-        private Queue<long> _pingValues = new Queue<long>();
-        private const int MaxGraphPoints = 50; // Сколько точек храним для графика
+        // --- СТАТИСТИКА И ДАННЫЕ ---
+        private object _statsLock = new object();
 
+        private Queue<bool> _history = new Queue<bool>();
+        private Queue<long> _pingValues = new Queue<long>();
+        private const int MaxGraphPoints = 50;
+
+        private List<string> _logEvents = new List<string>();
+        private const int MaxLogEntries = 1000;
+        private bool? _lastStateWasSuccess = null;
+
+        // Основные счетчики
         private long _totalPings = 0;
         private long _lostPings = 0;
 
-        // Настройки отображения
-        private bool _showGraph = true; // Показывать ли график
-        private Color _currentStatusColor = Color.LimeGreen; // Текущий цвет статуса
+        // Счетчики распределения задержек (Buckets)
+        private long _statLt100 = 0;     // < 100 ms
+        private long _stat100to200 = 0;  // 100 - 200 ms
+        private long _statGt200 = 0;     // > 200 ms
+                                         // ---------------------------
+
+        private bool _showGraph = true;
+        private Color _currentStatusColor = Color.LimeGreen;
 
         public event EventHandler RemoveRequested;
 
-        // Элементы UI
-       // private Label lblAddress;
+        //private Label lblAddress;
         //private Label lblPing;
         //private Label lblStats;
         private Panel pnlStatusIndicator;
         private Label btnClose;
 
-        // Свойства для сохранения (на будущее)
         public string Address => _address;
         public string Alias => _alias;
 
         public PingTile(string address, string alias = "")
         {
-            // Включаем двойную буферизацию, чтобы график не мерцал
             this.DoubleBuffered = true;
-
             _address = address;
             _alias = alias;
 
+            AddToLog("Мониторинг запущен");
             InitializeCustomUI();
             StartPing();
+        }
+
+        private void AddToLog(string message)
+        {
+            string time = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+            string entry = $"[{time}] {message}";
+
+            lock (_statsLock)
+            {
+                _logEvents.Add(entry);
+                if (_logEvents.Count > MaxLogEntries) _logEvents.RemoveAt(0);
+            }
+        }
+
+        // --- ГЕНЕРАЦИЯ ОТЧЕТА ---
+        private void ShowLogWindow()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            long total = 0;
+            long lost = 0;
+            int recentTotal = 0;
+            int recentLost = 0;
+
+            // Переменные для гистограммы
+            long cntLt100 = 0;
+            long cnt100to200 = 0;
+            long cntGt200 = 0;
+
+            List<string> logsCopy = new List<string>();
+
+            lock (_statsLock)
+            {
+                total = _totalPings;
+                lost = _lostPings;
+
+                recentTotal = _history.Count;
+                recentLost = _history.Count(x => !x);
+
+                cntLt100 = _statLt100;
+                cnt100to200 = _stat100to200;
+                cntGt200 = _statGt200;
+
+                logsCopy.AddRange(_logEvents);
+            }
+
+            // Математика общая
+            double totalLossPct = total > 0 ? (double)lost / total * 100 : 0;
+            double totalUptime = 100 - totalLossPct;
+            long successTotal = total - lost; // Общее кол-во успешных пакетов
+
+            // Математика Recent
+            double recentLossPct = recentTotal > 0 ? (double)recentLost / recentTotal * 100 : 0;
+            double recentUptime = 100 - recentLossPct;
+
+            // Математика Задержек (считаем процент от УСПЕШНЫХ пакетов)
+            double pctLt100 = successTotal > 0 ? (double)cntLt100 / successTotal * 100 : 0;
+            double pct100to200 = successTotal > 0 ? (double)cnt100to200 / successTotal * 100 : 0;
+            double pctGt200 = successTotal > 0 ? (double)cntGt200 / successTotal * 100 : 0;
+
+            string name = !string.IsNullOrEmpty(_alias) ? _alias : _address;
+
+            sb.AppendLine($"ОТЧЕТ МОНИТОРИНГА: {name}");
+            sb.AppendLine($"Адрес: {_address}");
+            sb.AppendLine(new string('=', 50));
+
+            sb.AppendLine("ОБЩАЯ СТАТИСТИКА (All Time):");
+            sb.AppendLine($"• Всего пакетов:      {total}");
+            sb.AppendLine($"• Потеряно:           {lost}");
+            sb.AppendLine($"• Процент потерь:     {totalLossPct:F2}%");
+            sb.AppendLine($"• Стабильность (Up):  {totalUptime:F2}%");
+            sb.AppendLine();
+
+            sb.AppendLine("РАСПРЕДЕЛЕНИЕ ЗАДЕРЖЕК (Latency Distribution):");
+            sb.AppendLine($"• Быстро (< 100ms):       {cntLt100}\t({pctLt100:F1}%)");
+            sb.AppendLine($"• Средне (100-200ms):     {cnt100to200}\t({pct100to200:F1}%)");
+            sb.AppendLine($"• Медленно (> 200ms):     {cntGt200}\t({pctGt200:F1}%)");
+            sb.AppendLine("* Проценты от успешных пакетов");
+            sb.AppendLine();
+
+            sb.AppendLine("ПОСЛЕДНИЕ 10 МИНУТ (Recent):");
+            sb.AppendLine($"• Потерь за 10 мин:   {recentLost} из {recentTotal}");
+            sb.AppendLine($"• Текущая стабильность: {recentUptime:F2}%");
+
+            sb.AppendLine(new string('=', 50));
+            sb.AppendLine("ЖУРНАЛ СОБЫТИЙ:");
+            sb.AppendLine();
+
+            foreach (var line in logsCopy)
+            {
+                sb.AppendLine(line);
+            }
+
+            LogForm form = new LogForm(name, sb.ToString());
+            form.ShowDialog();
         }
 
         private void InitializeCustomUI()
@@ -70,18 +172,16 @@ namespace PingMonitor
             this.BackColor = ColorBgNormal;
             this.Margin = new Padding(5);
 
-            // 1. Полоска статуса сверху
             pnlStatusIndicator = new Panel();
             pnlStatusIndicator.Dock = DockStyle.Top;
             pnlStatusIndicator.Height = 6;
             pnlStatusIndicator.BackColor = Color.Gray;
             this.Controls.Add(pnlStatusIndicator);
 
-            // 2. Кнопка закрытия
             btnClose = new Label();
             btnClose.Text = "✕";
             btnClose.ForeColor = Color.Gray;
-            btnClose.BackColor = Color.Transparent; // Важно для графика
+            btnClose.BackColor = Color.Transparent;
             btnClose.Font = new Font("Arial", 10, FontStyle.Bold);
             btnClose.AutoSize = true;
             btnClose.Cursor = Cursors.Hand;
@@ -92,10 +192,9 @@ namespace PingMonitor
             this.Controls.Add(btnClose);
             btnClose.BringToFront();
 
-            // 3. Заголовок (Имя/IP)
             lblAddress = new Label();
             lblAddress.ForeColor = ColorTextMain;
-            lblAddress.BackColor = Color.Transparent; // Прозрачный фон!
+            lblAddress.BackColor = Color.Transparent;
             lblAddress.AutoSize = false;
             lblAddress.TextAlign = ContentAlignment.MiddleCenter;
             lblAddress.Dock = DockStyle.Top;
@@ -115,22 +214,20 @@ namespace PingMonitor
             lblAddress.Padding = new Padding(0, 5, 0, 0);
             this.Controls.Add(lblAddress);
 
-            // 4. Статистика (снизу)
             lblStats = new Label();
             lblStats.Text = "Waiting...";
             lblStats.ForeColor = ColorTextDim;
-            lblStats.BackColor = Color.Transparent; // Прозрачный фон!
+            lblStats.BackColor = Color.Transparent;
             lblStats.Font = new Font("Segoe UI", 8);
             lblStats.Dock = DockStyle.Bottom;
             lblStats.TextAlign = ContentAlignment.MiddleCenter;
             lblStats.Height = 25;
             this.Controls.Add(lblStats);
 
-            // 5. Значение пинга (по центру)
             lblPing = new Label();
             lblPing.Text = "--";
             lblPing.ForeColor = ColorTextMain;
-            lblPing.BackColor = Color.Transparent; // Прозрачный фон!
+            lblPing.BackColor = Color.Transparent;
             lblPing.Font = new Font("Segoe UI", 22, FontStyle.Bold);
             lblPing.Dock = DockStyle.Fill;
             lblPing.TextAlign = ContentAlignment.MiddleCenter;
@@ -146,7 +243,12 @@ namespace PingMonitor
         {
             ContextMenuStrip menu = new ContextMenuStrip();
 
-            // Пункт Tracert
+            ToolStripMenuItem itemLog = new ToolStripMenuItem("📄 Журнал событий и Статистика");
+            itemLog.Click += (s, e) => ShowLogWindow();
+            menu.Items.Add(itemLog);
+
+            menu.Items.Add(new ToolStripSeparator());
+
             ToolStripMenuItem itemTracert = new ToolStripMenuItem("Trace Route (Tracert)");
             itemTracert.Click += (s, e) => {
                 try { Process.Start("cmd.exe", $"/k tracert {_address}"); }
@@ -154,13 +256,12 @@ namespace PingMonitor
             };
             menu.Items.Add(itemTracert);
 
-            // Пункт переключения графика
             ToolStripMenuItem itemToggleGraph = new ToolStripMenuItem("Показывать график");
             itemToggleGraph.Checked = _showGraph;
             itemToggleGraph.CheckOnClick = true;
             itemToggleGraph.Click += (s, e) => {
                 _showGraph = itemToggleGraph.Checked;
-                this.Invalidate(); // Перерисовать плитку
+                this.Invalidate();
             };
             menu.Items.Add(itemToggleGraph);
 
@@ -177,55 +278,46 @@ namespace PingMonitor
             }
         }
 
-        // === ГЛАВНАЯ МАГИЯ: Рисуем график ===
         protected override void OnPaint(PaintEventArgs e)
         {
-            base.OnPaint(e); // Рисуем стандартный фон
-
+            base.OnPaint(e);
             if (!_showGraph || _pingValues.Count < 2) return;
 
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // 1. Создаем полупрозрачную кисть текущего цвета
-            // 40 - это альфа-канал (прозрачность от 0 до 255)
             using (Brush brush = new SolidBrush(Color.FromArgb(40, _currentStatusColor)))
             {
-                // 2. Рассчитываем координаты точек
                 List<PointF> points = new List<PointF>();
-
-                // Стартовая точка в левом нижнем углу
                 points.Add(new PointF(0, this.Height));
 
                 float xStep = (float)this.Width / (MaxGraphPoints - 1);
+                long maxPing = 0;
 
-                // Нормализация по высоте (чтобы график влезал)
-                // Ищем максимум на графике, но не меньше 50мс (иначе график 1мс будет на весь экран)
-                long maxPing = _pingValues.Max();
+                lock (_statsLock)
+                {
+                    if (_pingValues.Count > 0) maxPing = _pingValues.Max();
+                }
+
                 if (maxPing < 50) maxPing = 50;
 
+                long[] values;
+                lock (_statsLock) { values = _pingValues.ToArray(); }
+
                 int i = 0;
-                foreach (long val in _pingValues)
+                foreach (long val in values)
                 {
                     float x = i * xStep;
-                    // Чем больше пинг, тем меньше Y (ближе к верху), но не выше шапки (30px)
-                    // Оставляем 30px сверху для заголовка
                     float availableHeight = this.Height - 30;
                     float y = this.Height - ((float)val / maxPing * availableHeight);
-
                     points.Add(new PointF(x, y));
                     i++;
                 }
+                points.Add(new PointF((values.Length - 1) * xStep, this.Height));
 
-                // Финальная точка в правом нижнем углу
-                points.Add(new PointF((_pingValues.Count - 1) * xStep, this.Height));
-
-                // 3. Рисуем полигон (закрашенную область)
                 if (points.Count > 2)
                 {
                     g.FillPolygon(brush, points.ToArray());
-
-                    // Опционально: можно нарисовать тонкую линию сверху поярче
                     using (Pen pen = new Pen(Color.FromArgb(100, _currentStatusColor), 1))
                     {
                         g.DrawLines(pen, points.GetRange(1, points.Count - 2).ToArray());
@@ -254,15 +346,18 @@ namespace PingMonitor
                         }
                         else
                         {
-                            // Если таймаут, считаем пинг как максимальный (например 2000), 
-                            // чтобы график подскочил вверх
                             rtt = 2000;
                         }
                     }
                     catch { success = false; rtt = 2000; }
 
-                    UpdateStats(success);
-                    UpdateGraphData(rtt); // <--- Добавляем данные в график
+                    lock (_statsLock)
+                    {
+                        UpdateStats(success, rtt); // <-- Передаем RTT для статистики
+                        UpdateGraphData(rtt);
+                    }
+
+                    CheckAndLogState(success, rtt);
                     UpdateUI(success, rtt);
 
                     await Task.Delay(1000, _cts.Token);
@@ -271,28 +366,50 @@ namespace PingMonitor
             catch { }
         }
 
+        private void CheckAndLogState(bool currentSuccess, long rtt)
+        {
+            if (_lastStateWasSuccess == null)
+            {
+                _lastStateWasSuccess = currentSuccess;
+                if (!currentSuccess) AddToLog($"⚠ Инициализация: Узел недоступен!");
+                else AddToLog($"✅ Инициализация: Узел доступен. Ping: {rtt} ms");
+                return;
+            }
+
+            if (_lastStateWasSuccess != currentSuccess)
+            {
+                if (currentSuccess) AddToLog($"✅ Связь восстановлена (UP). Ping: {rtt} ms");
+                else AddToLog($"⛔ Связь потеряна (DOWN). Timeout.");
+
+                _lastStateWasSuccess = currentSuccess;
+            }
+        }
+
         private void UpdateGraphData(long rtt)
         {
             _pingValues.Enqueue(rtt);
             if (_pingValues.Count > MaxGraphPoints) _pingValues.Dequeue();
 
-            // Вызываем перерисовку (OnPaint)
-            // Invoke не нужен, так как Invalidate потокобезопасен (обычно), 
-            // но для надежности сделаем через Invoke
-            if (this.InvokeRequired)
+            if (this.InvokeRequired) this.Invoke(new Action(() => this.Invalidate()));
+            else this.Invalidate();
+        }
+
+        // --- ОБНОВЛЕННЫЙ МЕТОД СБОРА СТАТИСТИКИ ---
+        private void UpdateStats(bool success, long rtt)
+        {
+            _totalPings++;
+            if (!success)
             {
-                this.Invoke(new Action(() => this.Invalidate()));
+                _lostPings++;
             }
             else
             {
-                this.Invalidate();
+                // Считаем распределение задержек только для успешных
+                if (rtt < 100) _statLt100++;
+                else if (rtt < 200) _stat100to200++;
+                else _statGt200++;
             }
-        }
 
-        private void UpdateStats(bool success)
-        {
-            _totalPings++;
-            if (!success) _lostPings++;
             _history.Enqueue(success);
             if (_history.Count > 600) _history.Dequeue();
         }
@@ -300,17 +417,24 @@ namespace PingMonitor
         private void UpdateUI(bool success, long rtt)
         {
             if (IsDisposed) return;
-            int recentLossCount = _history.Count(x => !x);
-            double recentLossPercent = _history.Count > 0 ? (double)recentLossCount / _history.Count * 100 : 0;
 
-            Color statusColor = Color.FromArgb(46, 204, 113); // Green
-            if (!success) statusColor = Color.FromArgb(231, 76, 60); // Red
-            else if (recentLossPercent > 20) statusColor = Color.FromArgb(243, 156, 18); // Orange
-            else if (rtt > 100) statusColor = Color.FromArgb(241, 196, 15); // Yellow
+            int recentLossCount = 0;
+            int totalCount = 0;
 
-            // Сохраняем цвет для графика
+            lock (_statsLock)
+            {
+                recentLossCount = _history.Count(x => !x);
+                totalCount = _history.Count;
+            }
+
+            double recentLossPercent = totalCount > 0 ? (double)recentLossCount / totalCount * 100 : 0;
+
+            Color statusColor = Color.FromArgb(46, 204, 113);
+            if (!success) statusColor = Color.FromArgb(231, 76, 60);
+            else if (recentLossPercent > 20) statusColor = Color.FromArgb(243, 156, 18);
+            else if (rtt > 100) statusColor = Color.FromArgb(241, 196, 15);
+
             _currentStatusColor = statusColor;
-
             string statsText = $"Loss: {recentLossPercent:F1}% (10m)";
 
             if (this.InvokeRequired)
@@ -319,15 +443,11 @@ namespace PingMonitor
                 return;
             }
 
-            // Если был таймаут, пишем текст, иначе пинг
-            // (rtt мы ставили 2000 для графика, но в текст выводим красиво)
             lblPing.Text = success ? $"{rtt} ms" : "TIMEOUT";
             lblPing.ForeColor = success ? ColorTextMain : Color.FromArgb(231, 76, 60);
 
             pnlStatusIndicator.BackColor = statusColor;
             lblStats.Text = statsText;
-
-            // Invalidate вызывается в UpdateGraphData, так что здесь не обязательно
         }
 
         public void Stop() { _cts?.Cancel(); }
