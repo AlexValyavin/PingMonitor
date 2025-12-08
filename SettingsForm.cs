@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Forms;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
 namespace PingMonitor
 {
@@ -11,187 +12,211 @@ namespace PingMonitor
     {
         public AppSettings Settings { get; private set; }
 
-        // Элементы управления
+        // UI Controls
         private CheckBox chkLossEnable;
         private ComboBox cmbLossSound;
         private TrackBar trackLossVol;
-
         private CheckBox chkPingEnable;
         private ComboBox cmbPingSound;
         private TrackBar trackPingVol;
         private NumericUpDown numPingThreshold;
 
-        // Перетаскивание окна
-        [DllImport("user32.dll")]
-        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
-        [DllImport("user32.dll")]
-        public static extern bool ReleaseCapture();
+        private ListBox lstTemplates;
+        private TextBox txtNewTemplate;
+        private Button btnAddTemplate;
+        private Button btnDelTemplate;
+
+        // --- WINAPI ---
+        [DllImport("user32.dll")] public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        [DllImport("user32.dll")] public static extern bool ReleaseCapture();
         private void DragWindow(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if (e.Button == MouseButtons.Left) { ReleaseCapture(); SendMessage(Handle, 0xA1, 0x2, 0); }
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
             {
-                ReleaseCapture();
-                SendMessage(Handle, 0xA1, 0x2, 0);
+                CreateParams cp = base.CreateParams;
+                cp.ClassStyle |= 0x20000; // Тень
+                return cp;
+            }
+        }
+
+        // Ресайз
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_NCHITTEST = 0x84;
+            const int HTLEFT = 10; const int HTRIGHT = 11; const int HTTOP = 12; const int HTTOPLEFT = 13;
+            const int HTTOPRIGHT = 14; const int HTBOTTOM = 15; const int HTBOTTOMLEFT = 16; const int HTBOTTOMRIGHT = 17;
+            base.WndProc(ref m);
+            if (m.Msg == WM_NCHITTEST)
+            {
+                int resizeArea = 10; Point p = PointToClient(new Point(m.LParam.ToInt32()));
+                if (p.Y <= resizeArea) { if (p.X <= resizeArea) m.Result = (IntPtr)HTTOPLEFT; else if (p.X >= Width - resizeArea) m.Result = (IntPtr)HTTOPRIGHT; else m.Result = (IntPtr)HTTOP; }
+                else if (p.Y >= Height - resizeArea) { if (p.X <= resizeArea) m.Result = (IntPtr)HTBOTTOMLEFT; else if (p.X >= Width - resizeArea) m.Result = (IntPtr)HTBOTTOMRIGHT; else m.Result = (IntPtr)HTBOTTOM; }
+                else if (p.X <= resizeArea) m.Result = (IntPtr)HTLEFT; else if (p.X >= Width - resizeArea) m.Result = (IntPtr)HTRIGHT;
             }
         }
 
         public SettingsForm(AppSettings currentSettings)
         {
             Settings = currentSettings;
-            InitializeComponent();
+            if (Settings.IpTemplates == null) Settings.IpTemplates = new List<string>();
+            SetupCustomUI();
             LoadValues();
         }
 
-        private void InitializeComponent()
+        private void SetupCustomUI()
         {
             this.FormBorderStyle = FormBorderStyle.None;
-            this.Size = new Size(400, 600);
+            this.Size = new Size(500, 600);
             this.StartPosition = FormStartPosition.CenterParent;
             this.BackColor = Color.FromArgb(30, 30, 30);
-            this.Padding = new Padding(2); // Внешняя рамка
+            this.Padding = new Padding(1); // Тонкая рамка
+            this.DoubleBuffered = true;
 
-            // --- ЗАГОЛОВОК ---
+            // 1. HEADER (Dock = Top)
+            // Добавляем первым, чтобы он прилип к самому верху
             Label lblTitle = new Label
             {
-                Text = "Настройки оповещений",
+                Text = "Настройки",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 ForeColor = Color.White,
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 50,
                 TextAlign = ContentAlignment.MiddleCenter
             };
             lblTitle.MouseDown += DragWindow;
             this.Controls.Add(lblTitle);
 
-            // --- ПАНЕЛЬ КНОПОК (СНИЗУ) ---
+            // 2. BOTTOM BUTTONS (Dock = Bottom)
+            // Добавляем вторым, прилипнет к низу
             Panel pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = Color.Transparent };
 
-            Button btnSave = new Button
-            {
-                Text = "Сохранить",
-                DialogResult = DialogResult.OK,
-                BackColor = Color.FromArgb(46, 204, 113),
-                FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.Black,
-                Size = new Size(120, 35),
-                Location = new Point(60, 10),
-                Cursor = Cursors.Hand
-            };
+            Button btnSave = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, BackColor = Color.FromArgb(46, 204, 113), FlatStyle = FlatStyle.Flat, ForeColor = Color.Black, Size = new Size(120, 35), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            btnSave.Location = new Point(pnlBottom.Width - 260, 15);
             btnSave.FlatAppearance.BorderSize = 0;
 
-            Button btnCancel = new Button
-            {
-                Text = "Отмена",
-                DialogResult = DialogResult.Cancel,
-                BackColor = Color.FromArgb(60, 60, 60),
-                FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.White,
-                Size = new Size(120, 35),
-                Location = new Point(220, 10),
-                Cursor = Cursors.Hand
-            };
+            Button btnCancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Size = new Size(120, 35), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            btnCancel.Location = new Point(pnlBottom.Width - 130, 15);
             btnCancel.FlatAppearance.BorderSize = 0;
 
-            pnlBottom.Controls.Add(btnSave);
-            pnlBottom.Controls.Add(btnCancel);
+            pnlBottom.Controls.Add(btnSave); pnlBottom.Controls.Add(btnCancel);
             this.Controls.Add(pnlBottom);
 
-            // --- ПАНЕЛЬ КОНТЕНТА ---
-            Panel pnlContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-            this.Controls.Add(pnlContent);
+            // 3. TAB CONTROL (Dock = Fill)
+            // Займет всё оставшееся место между Header и Bottom
+            TabControl tabControl = new TabControl { Dock = DockStyle.Fill };
+            tabControl.SizeMode = TabSizeMode.Fixed;
+            tabControl.ItemSize = new Size(130, 35);
+            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl.DrawItem += TabControl_DrawItem;
 
-            // === ГРУППА 1: LOSS (Потеря) ===
-            // Сдвигаем группу ниже (Y=20)
-            GroupBox grpLoss = CreateGroup("🔴 При потере связи (Loss)", 60, pnlContent);
+            TabPage tabAlerts = new TabPage("Оповещения") { BackColor = Color.FromArgb(30, 30, 30) };
+            TabPage tabTemplates = new TabPage("Шаблоны IP") { BackColor = Color.FromArgb(30, 30, 30) };
 
-            // Чекбокс
-            chkLossEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true };
-            grpLoss.Controls.Add(chkLossEnable);
+            tabControl.TabPages.Add(tabAlerts);
+            tabControl.TabPages.Add(tabTemplates);
+            this.Controls.Add(tabControl);
+            // Важно: перенести на передний план, чтобы корректно занял место
+            tabControl.BringToFront();
 
-            // Звук
-            Label lblSnd1 = new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true };
-            grpLoss.Controls.Add(lblSnd1);
+            // === Вкладка 1: Оповещения ===
+            // (Тут используем GroupBox с Anchor, так как контент фиксированный)
+            GroupBox grpLoss = CreateGroup("🔴 При потере связи", 10, tabAlerts);
+            grpLoss.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpLoss.Width = tabAlerts.Width - 20;
+            chkLossEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true }; grpLoss.Controls.Add(chkLossEnable);
+            grpLoss.Controls.Add(new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true });
+            cmbLossSound = CreateSoundCombo(15, 80); cmbLossSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; cmbLossSound.Width = grpLoss.Width - 100; grpLoss.Controls.Add(cmbLossSound);
+            Button btnTest1 = CreateTestButton(cmbLossSound, () => trackLossVol.Value); btnTest1.Anchor = AnchorStyles.Top | AnchorStyles.Right; btnTest1.Location = new Point(grpLoss.Width - 70, 79); grpLoss.Controls.Add(btnTest1);
+            grpLoss.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true });
+            trackLossVol = CreateTrackBar(15, 130); trackLossVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; trackLossVol.Width = grpLoss.Width - 30; grpLoss.Controls.Add(trackLossVol);
 
-            cmbLossSound = CreateSoundCombo(15, 80);
-            grpLoss.Controls.Add(cmbLossSound);
-            grpLoss.Controls.Add(CreateTestButton(230, 79, cmbLossSound, () => trackLossVol.Value));
+            GroupBox grpPing = CreateGroup("🟡 При высоком пинге", 200, tabAlerts);
+            grpPing.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpPing.Width = tabAlerts.Width - 20;
+            chkPingEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true }; grpPing.Controls.Add(chkPingEnable);
+            grpPing.Controls.Add(new Label { Text = "Порог (мс):", ForeColor = Color.Gray, Location = new Point(150, 31), AutoSize = true });
+            numPingThreshold = new NumericUpDown { Location = new Point(230, 29), Width = 60, Minimum = 10, Maximum = 5000 }; grpPing.Controls.Add(numPingThreshold);
+            grpPing.Controls.Add(new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true });
+            cmbPingSound = CreateSoundCombo(15, 80); cmbPingSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; cmbPingSound.Width = grpPing.Width - 100; grpPing.Controls.Add(cmbPingSound);
+            Button btnTest2 = CreateTestButton(cmbPingSound, () => trackPingVol.Value); btnTest2.Anchor = AnchorStyles.Top | AnchorStyles.Right; btnTest2.Location = new Point(grpPing.Width - 70, 79); grpPing.Controls.Add(btnTest2);
+            grpPing.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true });
+            trackPingVol = CreateTrackBar(15, 130); trackPingVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; trackPingVol.Width = grpPing.Width - 30; grpPing.Controls.Add(trackPingVol);
 
-            // Громкость
-            Label lblVol1 = new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true };
-            grpLoss.Controls.Add(lblVol1);
-            trackLossVol = CreateTrackBar(15, 130);
-            grpLoss.Controls.Add(trackLossVol);
+            // === Вкладка 2: Шаблоны (РЕЗИНОВАЯ ВЕРСТКА) ===
 
+            // 1. Панель ввода (Сверху)
+            Panel pnlTemplatesTop = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.Transparent, Padding = new Padding(10) };
+            tabTemplates.Controls.Add(pnlTemplatesTop);
 
-            // === ГРУППА 2: HIGH PING ===
-            // Сдвигаем вторую группу еще ниже (Y=210)
-            GroupBox grpPing = CreateGroup("🟡 При высоком пинге", 250, pnlContent);
+            Label lblHint = new Label { Text = "Создайте маски. '*' заменяет курсор.\nПримеры: 192.168.1.*", ForeColor = Color.Gray, AutoSize = true, Dock = DockStyle.Top };
+            pnlTemplatesTop.Controls.Add(lblHint);
 
-            // Чекбокс
-            chkPingEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true };
-            grpPing.Controls.Add(chkPingEnable);
+            // Контейнер для строки ввода
+            Panel pnlInputRow = new Panel { Dock = DockStyle.Bottom, Height = 30 };
+            pnlTemplatesTop.Controls.Add(pnlInputRow);
 
-            // Порог
-            Label lblThres = new Label { Text = "Порог (мс):", ForeColor = Color.Gray, Location = new Point(150, 31), AutoSize = true };
-            grpPing.Controls.Add(lblThres);
-            numPingThreshold = new NumericUpDown { Location = new Point(230, 29), Width = 60, Minimum = 10, Maximum = 5000, Value = 200 };
-            grpPing.Controls.Add(numPingThreshold);
+            btnAddTemplate = new Button { Text = "Добавить", Width = 100, Dock = DockStyle.Right, BackColor = Color.FromArgb(0, 122, 204), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand };
+            btnAddTemplate.FlatAppearance.BorderSize = 0;
+            btnAddTemplate.Click += BtnAddTemplate_Click;
+            pnlInputRow.Controls.Add(btnAddTemplate);
 
-            // Звук
-            Label lblSnd2 = new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true };
-            grpPing.Controls.Add(lblSnd2);
+            txtNewTemplate = new TextBox { Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill };
+            pnlInputRow.Controls.Add(txtNewTemplate);
+            // Хак, чтобы TextBox не прилипал к кнопке (добавляем Panel-спейсер или просто Margin)
+            txtNewTemplate.BringToFront(); // Чтобы Dock.Fill работал корректно с Dock.Right
 
-            cmbPingSound = CreateSoundCombo(15, 80);
-            grpPing.Controls.Add(cmbPingSound);
-            grpPing.Controls.Add(CreateTestButton(230, 79, cmbPingSound, () => trackPingVol.Value));
+            // 2. Кнопка удаления (Снизу)
+            btnDelTemplate = new Button { Text = "Удалить выбранный", Height = 40, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand };
+            btnDelTemplate.FlatAppearance.BorderSize = 0;
+            btnDelTemplate.Click += (s, e) => { if (lstTemplates.SelectedIndex >= 0) lstTemplates.Items.RemoveAt(lstTemplates.SelectedIndex); };
+            tabTemplates.Controls.Add(btnDelTemplate);
 
-            // Громкость
-            Label lblVol2 = new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true };
-            grpPing.Controls.Add(lblVol2);
-            trackPingVol = CreateTrackBar(15, 130);
-            grpPing.Controls.Add(trackPingVol);
-
-
-            // Рамка окна
-            this.Paint += (s, e) => { e.Graphics.DrawRectangle(Pens.Gray, 0, 0, Width - 1, Height - 1); };
+            // 3. Список (Заполняет всё остальное)
+            lstTemplates = new ListBox { Font = new Font("Segoe UI", 10), BackColor = Color.FromArgb(45, 45, 48), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
+            tabTemplates.Controls.Add(lstTemplates);
+            lstTemplates.BringToFront(); // Важно! Чтобы он занял центр между Top и Bottom
         }
 
-        // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
-        private GroupBox CreateGroup(string text, int y, Panel parent)
+        private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
-            GroupBox g = new GroupBox
-            {
-                Text = text,
-                Location = new Point(10, y),
-                Size = new Size(360, 180), // Увеличили высоту группы
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat // Плоский стиль для лучшей отрисовки
-            };
-            parent.Controls.Add(g);
-            return g;
+            TabControl tc = sender as TabControl;
+            if (e.Index >= tc.TabPages.Count) return;
+
+            TabPage page = tc.TabPages[e.Index]; Rectangle rect = e.Bounds;
+            using (Brush backBrush = (e.State == DrawItemState.Selected) ? new SolidBrush(Color.FromArgb(50, 50, 50)) : new SolidBrush(Color.FromArgb(30, 30, 30))) { e.Graphics.FillRectangle(backBrush, rect); }
+            Color textColor = (e.State == DrawItemState.Selected) ? Color.White : Color.Gray;
+            TextRenderer.DrawText(e.Graphics, page.Text, new Font("Segoe UI", 9), rect, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
+        private void BtnAddTemplate_Click(object sender, EventArgs e)
+        {
+            string tmpl = txtNewTemplate.Text.Trim();
+            if (string.IsNullOrWhiteSpace(tmpl)) return;
+            if (!tmpl.Contains("*")) { MessageBox.Show("Шаблон должен содержать '*'"); return; }
+            if (!lstTemplates.Items.Contains(tmpl)) lstTemplates.Items.Add(tmpl);
+            txtNewTemplate.Clear();
+        }
+
+        private GroupBox CreateGroup(string text, int y, Control parent)
+        {
+            GroupBox g = new GroupBox { Text = text, Location = new Point(10, y), Size = new Size(390, 180), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            parent.Controls.Add(g); return g;
+        }
         private ComboBox CreateSoundCombo(int x, int y)
         {
             ComboBox cb = new ComboBox { Location = new Point(x, y), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-            string mediaPath = @"C:\Windows\Media";
-            if (Directory.Exists(mediaPath))
-            {
-                var files = Directory.GetFiles(mediaPath, "*.wav").Select(Path.GetFileName).ToArray();
-                cb.Items.AddRange(files);
-            }
+            if (Directory.Exists(@"C:\Windows\Media")) cb.Items.AddRange(Directory.GetFiles(@"C:\Windows\Media", "*.wav").Select(Path.GetFileName).ToArray());
             return cb;
         }
-
         private TrackBar CreateTrackBar(int x, int y) => new TrackBar { Location = new Point(x, y), Width = 300, Maximum = 100, TickFrequency = 10, SmallChange = 5 };
 
-        private Button CreateTestButton(int x, int y, ComboBox cb, Func<int> getVol)
+        private Button CreateTestButton(ComboBox cb, Func<int> getVol)
         {
-            Button b = new Button { Text = "Play", Location = new Point(x, y), Width = 50, Height = 23, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand };
-            b.Click += (s, e) => {
-                string path = Path.Combine(@"C:\Windows\Media", cb.SelectedItem?.ToString() ?? "");
-                AudioManager.PlaySound(path, getVol());
-            };
+            Button b = new Button { Text = "Play", Width = 50, Height = 23, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White };
+            b.Click += (s, e) => AudioManager.PlaySound(Path.Combine(@"C:\Windows\Media", cb.SelectedItem?.ToString() ?? ""), getVol());
             return b;
         }
 
@@ -200,11 +225,12 @@ namespace PingMonitor
             chkLossEnable.Checked = Settings.LossAlertEnabled;
             trackLossVol.Value = Settings.LossVolume;
             SetComboValue(cmbLossSound, Settings.LossSoundFile);
-
             chkPingEnable.Checked = Settings.HighPingAlertEnabled;
             trackPingVol.Value = Settings.HighPingVolume;
             numPingThreshold.Value = Settings.HighPingThreshold;
             SetComboValue(cmbPingSound, Settings.HighPingSoundFile);
+            lstTemplates.Items.Clear();
+            foreach (var t in Settings.IpTemplates) lstTemplates.Items.Add(t);
         }
 
         private void SetComboValue(ComboBox cb, string fullPath)
@@ -219,11 +245,12 @@ namespace PingMonitor
             Settings.LossAlertEnabled = chkLossEnable.Checked;
             Settings.LossSoundFile = Path.Combine(@"C:\Windows\Media", cmbLossSound.SelectedItem?.ToString() ?? "");
             Settings.LossVolume = trackLossVol.Value;
-
             Settings.HighPingAlertEnabled = chkPingEnable.Checked;
             Settings.HighPingSoundFile = Path.Combine(@"C:\Windows\Media", cmbPingSound.SelectedItem?.ToString() ?? "");
             Settings.HighPingVolume = trackPingVol.Value;
             Settings.HighPingThreshold = (int)numPingThreshold.Value;
+            Settings.IpTemplates.Clear();
+            foreach (var item in lstTemplates.Items) Settings.IpTemplates.Add(item.ToString());
             AppSettings.Save(Settings);
         }
     }
