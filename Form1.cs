@@ -20,12 +20,29 @@ namespace PingMonitor
         {
             InitializeComponent();
             SetupFormDesign();
+            
+            // <--- НОВОЕ: Подписываемся на нажатие клавиш в поле ввода
+            textBoxIP.KeyDown += TextBoxIP_KeyDown;
+        }
+
+        // <--- НОВОЕ: Логика нажатия Enter
+        private void TextBoxIP_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // Эмулируем нажатие кнопки "Добавить"
+                buttonAdd_Click(sender, e);
+
+                // Убираем звук "дин" и предотвращаем дальнейшую обработку
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
         }
 
         private void SetupFormDesign()
         {
             // 1. Настройка самого окна
-            this.Text = "NetMonitor Pro";
+            this.Text = "PingMonitor";
             this.BackColor = Color.FromArgb(30, 30, 30); // Очень темный фон (почти черный)
             this.StartPosition = FormStartPosition.CenterScreen;
 
@@ -46,16 +63,6 @@ namespace PingMonitor
             AddTile(textBoxIP.Text);
         }
 
-        // Обработка нажатия Enter в поле ввода
-        private void textBoxIP_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                AddTile(textBoxIP.Text);
-                e.SuppressKeyPress = true; // Чтобы не было звука "дин"
-            }
-        }
-
         private void AddTile(string ip)
         {
             if (string.IsNullOrWhiteSpace(ip)) return;
@@ -70,14 +77,13 @@ namespace PingMonitor
                 AdjustWindowSize(); // Пересчитать размер окна при удалении
             };
 
-            // Добавляем в начало списка (опционально) или в конец
+            // Добавляем плитку В НАЧАЛО (SetChildIndex), чтобы новые были сверху
             flowLayoutPanel1.Controls.Add(tile);
-            // flowLayoutPanel1.Controls.SetChildIndex(tile, 0); // Если нужно новые сверху
+            flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
 
             textBoxIP.Clear();
-            textBoxIP.Focus();
+            textBoxIP.Focus(); // Возвращаем курсор в поле ввода
 
-            // Автоматически меняем размер окна
             AdjustWindowSize();
         }
 
