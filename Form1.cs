@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows.Forms;
+using System.Runtime.InteropServices; // Обязательно для перетаскивания
 
 namespace PingMonitor
 {
@@ -16,106 +12,166 @@ namespace PingMonitor
         private const int TileHeight = 110;
         private const int MarginSize = 10;
 
-        // Добавляем новые контролы как поля класса, чтобы иметь к ним доступ
         private TextBox textBoxName;
         private CheckBox checkAlwaysOnTop;
+
+        // --- ИМПОРТ ФУНКЦИЙ ДЛЯ ПЕРЕТАСКИВАНИЯ ОКНА ---
+        [DllImport("user32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        [DllImport("user32.dll")]
+        public static extern bool ReleaseCapture();
+
+        // Метод, который говорит Windows: "Началось перетаскивание заголовка"
+        private void DragWindow(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(Handle, 0xA1, 0x2, 0);
+            }
+        }
+        // ---------------------------------------------
 
         public Form1()
         {
             InitializeComponent();
             SetupFormDesign();
-
-            // События нажатия Enter привяжем в SetupFormDesign
         }
 
         private void SetupFormDesign()
         {
+            // 1. Убираем рамку
+            this.FormBorderStyle = FormBorderStyle.None;
             this.Text = "NetMonitor Pro";
             this.BackColor = Color.FromArgb(30, 30, 30);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = SystemIcons.Application; // Стандартная иконка
+            this.Icon = SystemIcons.Application;
+            this.Padding = new Padding(1); // Тонкая обводка окна
 
             // --- ВЕРХНЯЯ ПАНЕЛЬ ---
-            // Очищаем панель из дизайнера, будем добавлять кодом для точности (или настрой в дизайнере)
-            // Но проще настроить существующие. Предполжим, у нас есть panel1, textBoxIP, buttonAdd
-
-            // Настраиваем panel1
-            panel1.Height = 50;
+            panel1.Height = 60; // Чуть увеличим высоту, чтобы элементы не слипались
             panel1.BackColor = Color.FromArgb(45, 45, 48);
             panel1.Dock = DockStyle.Top;
 
-            // 1. Поле IP (уже есть, просто настраиваем)
-            textBoxIP.Width = 120;
-            textBoxIP.Location = new Point(10, 12);
-            // Placeholder/Hint можно сделать через WinAPI, но пока просто Label сверху
-            // (оставим пока как есть)
+            // ВАЖНО: Подписываем панель на событие перетаскивания
+            panel1.MouseDown += DragWindow;
 
-            // 2. <--- НОВОЕ: Поле Имени
+            // Настраиваем шрифты для полей
+            Font fontInputs = new Font("Segoe UI", 10F);
+            Font fontHints = new Font("Segoe UI", 8F);
+
+            // 1. Поле IP
+            // Подсказка
+            Label lblIpHint = new Label();
+            lblIpHint.Text = "IP адрес / Хост";
+            lblIpHint.ForeColor = Color.DarkGray;
+            lblIpHint.Location = new Point(12, 8); // Сверху
+            lblIpHint.AutoSize = true;
+            lblIpHint.Font = fontHints;
+            lblIpHint.MouseDown += DragWindow; // Чтобы за текст тоже можно было таскать
+            panel1.Controls.Add(lblIpHint);
+
+            // Поле ввода
+            textBoxIP.Font = fontInputs;
+            textBoxIP.Width = 130;
+            textBoxIP.Location = new Point(12, 28); // Чуть ниже подсказки
+
+            // 2. Поле Имени
+            // Подсказка
+            Label lblNameHint = new Label();
+            lblNameHint.Text = "Имя (необязательно)";
+            lblNameHint.ForeColor = Color.DarkGray;
+            lblNameHint.Location = new Point(155, 8);
+            lblNameHint.AutoSize = true;
+            lblNameHint.Font = fontHints;
+            lblNameHint.MouseDown += DragWindow;
+            panel1.Controls.Add(lblNameHint);
+
+            // Поле ввода
             textBoxName = new TextBox();
-            textBoxName.Location = new Point(140, 12); // Справа от IP
-            textBoxName.Width = 150;
-            textBoxName.Font = textBoxIP.Font;
-            textBoxName.Text = ""; // Пусто по умолчанию
-            // Логика Enter для поля Имени тоже должна работать
+            textBoxName.Font = fontInputs;
+            textBoxName.Location = new Point(155, 28);
+            textBoxName.Width = 160;
             textBoxName.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    buttonAdd_Click(s, e);
-                    e.Handled = true; e.SuppressKeyPress = true;
-                }
+                if (e.KeyCode == Keys.Enter) { buttonAdd_Click(s, e); e.Handled = true; e.SuppressKeyPress = true; }
             };
             panel1.Controls.Add(textBoxName);
 
-            // Добавим подсказки (Labels) над полями, чтобы было понятно
-            Label lblIpHint = new Label { Text = "IP / Host", ForeColor = Color.White, Location = new Point(10, 0), AutoSize = true, Font = new Font("Arial", 7) };
-            Label lblNameHint = new Label { Text = "Имя (Опц.)", ForeColor = Color.White, Location = new Point(140, 0), AutoSize = true, Font = new Font("Arial", 7) };
-            panel1.Controls.Add(lblIpHint);
-            panel1.Controls.Add(lblNameHint);
+            // 3. Кнопка Добавить
+            buttonAdd.Text = "Добавить";
+            buttonAdd.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            buttonAdd.Height = 27; // Подгоняем высоту под поля ввода
+            buttonAdd.Width = 100;
+            buttonAdd.Location = new Point(330, 27); // Выравниваем по вертикали с полями
+            // Сделаем кнопку плоской и красивой
+            buttonAdd.FlatStyle = FlatStyle.Flat;
+            buttonAdd.BackColor = Color.FromArgb(0, 122, 204); // Синий акцент
+            buttonAdd.ForeColor = Color.White;
+            buttonAdd.FlatAppearance.BorderSize = 0;
+            buttonAdd.Cursor = Cursors.Hand;
 
-            // 3. Кнопка Добавить (сдвигаем правее)
-            buttonAdd.Location = new Point(300, 10);
-
-            // 4. <--- НОВОЕ: Чекбокс "Поверх всех"
-            // 4. Кнопка-тумблер "Поверх всех"
+            // 4. Кнопка "Поверх всех"
             checkAlwaysOnTop = new CheckBox();
-            checkAlwaysOnTop.Appearance = Appearance.Button; // Превращаем галочку в кнопку
-            checkAlwaysOnTop.Text = "📌 Поверх всех";
+            checkAlwaysOnTop.Appearance = Appearance.Button;
+            checkAlwaysOnTop.Text = "📌"; // Только иконка для компактности, или текст
             checkAlwaysOnTop.TextAlign = ContentAlignment.MiddleCenter;
             checkAlwaysOnTop.AutoSize = false;
-            checkAlwaysOnTop.Size = new Size(120, 28);
-
-            // Прижимаем к правому краю (Anchor)
-            // Начальная позиция: ширина панели минус ширина кнопки минус отступ
-            checkAlwaysOnTop.Location = new Point(panel1.Width - 135, 12);
+            checkAlwaysOnTop.Size = new Size(40, 27); // Квадратная кнопка
+            checkAlwaysOnTop.Location = new Point(panel1.Width - 110, 27);
             checkAlwaysOnTop.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-
-            // Стили
             checkAlwaysOnTop.FlatStyle = FlatStyle.Flat;
             checkAlwaysOnTop.FlatAppearance.BorderSize = 0;
-            checkAlwaysOnTop.BackColor = Color.FromArgb(60, 60, 60); // Темно-серый по дефолту
-            checkAlwaysOnTop.ForeColor = Color.LightGray;
+            checkAlwaysOnTop.BackColor = Color.FromArgb(60, 60, 60);
+            checkAlwaysOnTop.ForeColor = Color.Gray;
             checkAlwaysOnTop.Cursor = Cursors.Hand;
 
-            // Логика переключения цвета
-            checkAlwaysOnTop.CheckedChanged += (s, e) => {
-                this.TopMost = checkAlwaysOnTop.Checked;
+            // Тултип (подсказка при наведении)
+            ToolTip tt = new ToolTip();
+            tt.SetToolTip(checkAlwaysOnTop, "Закрепить поверх всех окон");
 
+            checkAlwaysOnTop.CheckedChanged += (s, e) =>
+            {
+                this.TopMost = checkAlwaysOnTop.Checked;
                 if (checkAlwaysOnTop.Checked)
                 {
-                    // Активное состояние
                     checkAlwaysOnTop.BackColor = Color.FromArgb(46, 204, 113); // Зеленый
-                    checkAlwaysOnTop.ForeColor = Color.Black; // Черный текст для контраста
-                    checkAlwaysOnTop.Text = "📌 ЗАКРЕПЛЕНО";
+                    checkAlwaysOnTop.ForeColor = Color.Black;
                 }
                 else
                 {
-                    // Неактивное состояние
                     checkAlwaysOnTop.BackColor = Color.FromArgb(60, 60, 60);
-                    checkAlwaysOnTop.ForeColor = Color.LightGray;
-                    checkAlwaysOnTop.Text = "📌 Поверх всех";
+                    checkAlwaysOnTop.ForeColor = Color.Gray;
                 }
             };
             panel1.Controls.Add(checkAlwaysOnTop);
+
+            // 5. Кнопка СВЕРНУТЬ (—)
+            Label btnMinimize = new Label();
+            btnMinimize.Text = "—";
+            btnMinimize.Font = new Font("Arial", 12, FontStyle.Bold);
+            btnMinimize.ForeColor = Color.Gray;
+            btnMinimize.AutoSize = true;
+            btnMinimize.Cursor = Cursors.Hand;
+            btnMinimize.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnMinimize.Location = new Point(panel1.Width - 65, 5); // Самый верхний угол
+            btnMinimize.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
+            btnMinimize.MouseEnter += (s, e) => { btnMinimize.ForeColor = Color.White; };
+            btnMinimize.MouseLeave += (s, e) => { btnMinimize.ForeColor = Color.Gray; };
+            panel1.Controls.Add(btnMinimize);
+
+            // 6. Кнопка ЗАКРЫТЬ (X)
+            Label btnExit = new Label();
+            btnExit.Text = "✕";
+            btnExit.Font = new Font("Arial", 11, FontStyle.Regular);
+            btnExit.ForeColor = Color.Gray;
+            btnExit.AutoSize = true;
+            btnExit.Cursor = Cursors.Hand;
+            btnExit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnExit.Location = new Point(panel1.Width - 30, 6);
+            btnExit.Click += (s, e) => Application.Exit();
+            btnExit.MouseEnter += (s, e) => { btnExit.ForeColor = Color.Red; };
+            btnExit.MouseLeave += (s, e) => { btnExit.ForeColor = Color.Gray; };
+            panel1.Controls.Add(btnExit);
 
             // --- ОСНОВНАЯ ОБЛАСТЬ ---
             flowLayoutPanel1.Dock = DockStyle.Fill;
@@ -123,14 +179,9 @@ namespace PingMonitor
             flowLayoutPanel1.AutoScroll = true;
             flowLayoutPanel1.Padding = new Padding(10);
 
-            // Событие Enter для textBoxIP
+            // Событие Enter для IP
             textBoxIP.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    // Если ввели IP и нажали Enter -> фокус на имя
-                    textBoxName.Focus();
-                    e.Handled = true; e.SuppressKeyPress = true;
-                }
+                if (e.KeyCode == Keys.Enter) { textBoxName.Focus(); e.Handled = true; e.SuppressKeyPress = true; }
             };
 
             ResizeWindowToFit(4);
@@ -138,18 +189,16 @@ namespace PingMonitor
 
         private void buttonAdd_Click(object sender, EventArgs e)
         {
-            // Передаем и IP, и Имя
             AddTile(textBoxIP.Text, textBoxName.Text);
         }
 
-        // Обновленный метод AddTile принимает два аргумента
         private void AddTile(string ip, string alias)
         {
             if (string.IsNullOrWhiteSpace(ip)) return;
 
-            PingTile tile = new PingTile(ip, alias); // <--- Передаем в конструктор
-
-            tile.RemoveRequested += (s, ev) => {
+            PingTile tile = new PingTile(ip, alias);
+            tile.RemoveRequested += (s, ev) =>
+            {
                 tile.Stop();
                 flowLayoutPanel1.Controls.Remove(tile);
                 tile.Dispose();
@@ -159,19 +208,14 @@ namespace PingMonitor
             flowLayoutPanel1.Controls.Add(tile);
             flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
 
-            // Очищаем оба поля
             textBoxIP.Clear();
             textBoxName.Clear();
-
-            // Фокус обратно на IP для следующего ввода
             textBoxIP.Focus();
-
             AdjustWindowSize();
         }
 
         private void AdjustWindowSize()
         {
-            // (Этот код оставляем без изменений из прошлого шага)
             int count = flowLayoutPanel1.Controls.Count;
             if (count == 0) return;
             int cols = Math.Min(count, 4);
@@ -185,10 +229,48 @@ namespace PingMonitor
 
         private void ResizeWindowToFit(int tilesCount)
         {
-            // (Оставляем без изменений)
             int targetWidth = (TileWidth + MarginSize) * tilesCount + 50;
             int targetHeight = (TileHeight + MarginSize) * 2 + panel1.Height + 50;
             this.Size = new Size(targetWidth, targetHeight);
+        }
+
+        // --- ТОЛЬКО РЕСАЙЗ ЗА КРАЯ ОКНА (WndProc теперь только для ресайза) ---
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_NCHITTEST = 0x84;
+            // Зоны ресайза
+            const int HTLEFT = 10;
+            const int HTRIGHT = 11;
+            const int HTTOP = 12;
+            const int HTTOPLEFT = 13;
+            const int HTTOPRIGHT = 14;
+            const int HTBOTTOM = 15;
+            const int HTBOTTOMLEFT = 16;
+            const int HTBOTTOMRIGHT = 17;
+
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_NCHITTEST)
+            {
+                int resizeArea = 10;
+                Point screenPoint = new Point(m.LParam.ToInt32());
+                Point clientPoint = this.PointToClient(screenPoint);
+
+                if (clientPoint.Y <= resizeArea)
+                {
+                    if (clientPoint.X <= resizeArea) m.Result = (IntPtr)HTTOPLEFT;
+                    else if (clientPoint.X >= (this.Size.Width - resizeArea)) m.Result = (IntPtr)HTTOPRIGHT;
+                    else m.Result = (IntPtr)HTTOP;
+                }
+                else if (clientPoint.Y >= (this.Size.Height - resizeArea))
+                {
+                    if (clientPoint.X <= resizeArea) m.Result = (IntPtr)HTBOTTOMLEFT;
+                    else if (clientPoint.X >= (this.Size.Width - resizeArea)) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                    else m.Result = (IntPtr)HTBOTTOM;
+                }
+                else if (clientPoint.X <= resizeArea) m.Result = (IntPtr)HTLEFT;
+                else if (clientPoint.X >= (this.Size.Width - resizeArea)) m.Result = (IntPtr)HTRIGHT;
+            }
         }
     }
 }
