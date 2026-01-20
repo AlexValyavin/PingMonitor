@@ -11,13 +11,12 @@ namespace PingMonitor
         private const int TileWidth = 240;
         private const int TileHeight = 110;
         private const int MarginSize = 10;
-        private const int MinWindowWidth = 780; // Чуть шире, так как добавился комбобокс
+        private const int MinWindowWidth = 780;
 
         private TextBox textBoxName;
         private CheckBox checkAlwaysOnTop;
         private AppSettings _appSettings;
 
-        // Новые элементы для шаблонов
         private ComboBox comboTemplates;
         private Label lblPrefix;
         private Label lblSuffix;
@@ -39,7 +38,7 @@ namespace PingMonitor
             this.Text = "NetMonitor Pro";
             this.BackColor = Color.FromArgb(30, 30, 30);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = SystemIcons.Application;
+            this.Icon = SystemIcons.Application; // Или Properties.Resources.icon
             this.Padding = new Padding(1);
 
             panel1.Height = 60;
@@ -50,7 +49,7 @@ namespace PingMonitor
             Font fontInputs = new Font("Segoe UI", 10F);
             Font fontHints = new Font("Segoe UI", 8F);
 
-            // --- 1. ВЫБОР РЕЖИМА (ComboBox) ---
+            // --- HEADER CONTROLS ---
             Label lblMode = new Label { Text = "Режим / Шаблон", ForeColor = Color.DarkGray, Location = new Point(12, 8), AutoSize = true, Font = fontHints };
             panel1.Controls.Add(lblMode);
 
@@ -62,28 +61,22 @@ namespace PingMonitor
             comboTemplates.SelectedIndexChanged += ComboTemplates_SelectedIndexChanged;
             panel1.Controls.Add(comboTemplates);
 
-            // --- 2. ПОЛЕ ВВОДА IP (С ПРЕФИКСОМ И СУФФИКСОМ) ---
             Label lblIpHint = new Label { Text = "IP / ID", ForeColor = Color.DarkGray, Location = new Point(165, 8), AutoSize = true, Font = fontHints };
             panel1.Controls.Add(lblIpHint);
 
-            // Лейбл префикса (например "192.168.")
             lblPrefix = new Label { Text = "", ForeColor = Color.White, AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), BackColor = Color.Transparent };
-            lblPrefix.Location = new Point(165, 30); // Y чуть ниже, чтобы ровно с текстом
+            lblPrefix.Location = new Point(165, 30);
             panel1.Controls.Add(lblPrefix);
 
-            // Само поле ввода
             textBoxIP.Font = fontInputs;
-            textBoxIP.Location = new Point(165, 28); // X будет меняться динамически
+            textBoxIP.Location = new Point(165, 28);
             textBoxIP.Width = 100;
             textBoxIP.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { textBoxName.Focus(); e.Handled = true; e.SuppressKeyPress = true; } };
 
-            // Лейбл суффикса (например ".local")
             lblSuffix = new Label { Text = "", ForeColor = Color.White, AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), BackColor = Color.Transparent };
-            lblSuffix.Location = new Point(265, 30); // X будет меняться
+            lblSuffix.Location = new Point(265, 30);
             panel1.Controls.Add(lblSuffix);
 
-
-            // --- 3. ИМЯ ---
             Label lblNameHint = new Label { Text = "Имя (Опц.)", ForeColor = Color.DarkGray, Location = new Point(360, 8), AutoSize = true, Font = fontHints };
             panel1.Controls.Add(lblNameHint);
 
@@ -91,52 +84,21 @@ namespace PingMonitor
             textBoxName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { buttonAdd_Click(s, e); e.Handled = true; e.SuppressKeyPress = true; } };
             panel1.Controls.Add(textBoxName);
 
-            // --- 4. КНОПКИ ---
             buttonAdd.Text = "Добавить";
             buttonAdd.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             buttonAdd.Height = 27; buttonAdd.Width = 90;
             buttonAdd.Location = new Point(510, 27);
             buttonAdd.FlatStyle = FlatStyle.Flat; buttonAdd.BackColor = Color.FromArgb(0, 122, 204); buttonAdd.ForeColor = Color.White; buttonAdd.FlatAppearance.BorderSize = 0; buttonAdd.Cursor = Cursors.Hand;
 
-            // Правые кнопки
             Label btnSettings = new Label { Text = "⚙", Font = new Font("Segoe UI", 14), ForeColor = Color.Gray, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(panel1.Width - 145, 25) };
             btnSettings.Click += BtnSettings_Click;
             btnSettings.MouseEnter += (s, e) => btnSettings.ForeColor = Color.White; btnSettings.MouseLeave += (s, e) => btnSettings.ForeColor = Color.Gray;
             panel1.Controls.Add(btnSettings);
 
-            // --- ПРАВАЯ ЧАСТЬ ---
-
-            // 3.5. Кнопка ИНФО (i) - НОВОЕ
-            Label btnInfo = new Label();
-            btnInfo.Text = "ℹ"; // Символ информации
-            btnInfo.Font = new Font("Segoe UI", 14); // Тот же шрифт, что у шестеренки
-            btnInfo.ForeColor = Color.Gray;
-            btnInfo.AutoSize = true;
-            btnInfo.Cursor = Cursors.Hand;
-            btnInfo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-
-            // Сдвигаем левее настроек (145 + 30 = 175)
-            btnInfo.Location = new Point(panel1.Width - 175, 25);
-
-            btnInfo.Click += (s, e) => {
-                new AboutForm().ShowDialog(); // Открываем окно справки
-            };
-
-            btnInfo.MouseEnter += (s, e) => btnInfo.ForeColor = Color.White;
-            btnInfo.MouseLeave += (s, e) => btnInfo.ForeColor = Color.Gray;
-
-            // Добавляем подсказку
-            ToolTip ttInfo = new ToolTip();
-            ttInfo.SetToolTip(btnInfo, "Справка и инструкция");
-
+            Label btnInfo = new Label { Text = "ℹ", Font = new Font("Segoe UI", 14), ForeColor = Color.Gray, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(panel1.Width - 175, 25) };
+            btnInfo.Click += (s, e) => { new AboutForm().ShowDialog(); };
+            btnInfo.MouseEnter += (s, e) => btnInfo.ForeColor = Color.White; btnInfo.MouseLeave += (s, e) => btnInfo.ForeColor = Color.Gray;
             panel1.Controls.Add(btnInfo);
-
-
-            // 4. Настройки (Шестеренка) - ОСТАВЛЯЕМ КАК БЫЛО
-            //Label btnSettings = new Label();
-            // ... (твой код btnSettings) ...
-            btnSettings.Location = new Point(panel1.Width - 145, 25);
-            // ...
 
             checkAlwaysOnTop = new CheckBox { Appearance = Appearance.Button, Text = "📌", TextAlign = ContentAlignment.MiddleCenter, AutoSize = false, Size = new Size(40, 27), Location = new Point(panel1.Width - 110, 27), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.Gray, Cursor = Cursors.Hand };
             checkAlwaysOnTop.FlatAppearance.BorderSize = 0;
@@ -153,68 +115,122 @@ namespace PingMonitor
             btnExit.MouseEnter += (s, e) => btnExit.ForeColor = Color.Red; btnExit.MouseLeave += (s, e) => btnExit.ForeColor = Color.Gray;
             panel1.Controls.Add(btnExit);
 
-            flowLayoutPanel1.Dock = DockStyle.Fill; flowLayoutPanel1.BackColor = Color.FromArgb(30, 30, 30); flowLayoutPanel1.AutoScroll = true; flowLayoutPanel1.Padding = new Padding(10);
+            // --- DRAG & DROP НАСТРОЙКИ ---
+            flowLayoutPanel1.Dock = DockStyle.Fill;
+            flowLayoutPanel1.BackColor = Color.FromArgb(30, 30, 30);
+            flowLayoutPanel1.AutoScroll = true;
+            flowLayoutPanel1.Padding = new Padding(10);
 
-            // Инициализация списка шаблонов
+            // Включаем поддержку перетаскивания
+            flowLayoutPanel1.AllowDrop = true;
+            flowLayoutPanel1.DragEnter += FlowLayoutPanel1_DragEnter;
+            flowLayoutPanel1.DragOver += FlowLayoutPanel1_DragOver;
+
             UpdateTemplatesList();
+
+            // Если есть сохранение списка - раскомментируй LoadDevices();
+            // LoadDevices();
 
             ResizeWindowToFit(4);
         }
 
+        // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ (DRAG & DROP) ---
+
+        // 1. Начало перетаскивания (срабатывает, когда жмем на плитку)
+        private void Tile_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                // Находим плитку, на которую нажали
+                Control c = sender as Control;
+                // Если нажали на Label внутри плитки, берем Родителя (саму плитку)
+                while (c != null && !(c is PingTile)) c = c.Parent;
+
+                if (c is PingTile tile)
+                {
+                    // Запускаем процесс
+                    tile.DoDragDrop(tile, DragDropEffects.Move);
+                }
+            }
+        }
+
+        // 2. Входим в зону панели (разрешаем Move)
+        private void FlowLayoutPanel1_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(PingTile)))
+                e.Effect = DragDropEffects.Move;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        // 3. Двигаем мышкой над панелью (Меняем местами)
+        private void FlowLayoutPanel1_DragOver(object sender, DragEventArgs e)
+        {
+            // Получаем плитку, которую тащим
+            PingTile draggedTile = (PingTile)e.Data.GetData(typeof(PingTile));
+
+            // Определяем, над какой плиткой сейчас курсор
+            Point pt = flowLayoutPanel1.PointToClient(new Point(e.X, e.Y));
+            Control targetControl = flowLayoutPanel1.GetChildAtPoint(pt);
+
+            // Если курсор над другой плиткой, меняем их местами
+            if (targetControl != null && targetControl != draggedTile && targetControl is PingTile)
+            {
+                int targetIndex = flowLayoutPanel1.Controls.GetChildIndex(targetControl);
+                flowLayoutPanel1.Controls.SetChildIndex(draggedTile, targetIndex);
+                // invalidate не нужен, FlowLayout сам перерисуется
+            }
+        }
+        // ---------------------------------------------
+
+        private void AddTile(string ip, string alias)
+        {
+            if (string.IsNullOrWhiteSpace(ip)) return;
+            PingTile tile = new PingTile(ip, alias, _appSettings);
+
+            // Подписываемся на события перетаскивания
+            tile.EnableDragDrop(Tile_MouseDown);
+
+            tile.RemoveRequested += (s, ev) => { tile.Stop(); flowLayoutPanel1.Controls.Remove(tile); tile.Dispose(); AdjustWindowSize(); };
+
+            // Добавляем в начало (индекс 0)
+            flowLayoutPanel1.Controls.Add(tile);
+            flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
+
+            textBoxIP.Clear(); textBoxName.Clear(); textBoxIP.Focus();
+            AdjustWindowSize();
+        }
+
+        // ... ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ (AdjustWindowSize, Templates, etc) ...
+
         private void UpdateTemplatesList()
         {
             comboTemplates.Items.Clear();
-            comboTemplates.Items.Add("Обычный ввод (IP)"); // Стандартный режим
-
-            foreach (var t in _appSettings.IpTemplates)
-            {
-                comboTemplates.Items.Add(t);
-            }
-
-            // Восстанавливаем выбор или ставим первый
+            comboTemplates.Items.Add("Обычный ввод (IP)");
+            foreach (var t in _appSettings.IpTemplates) comboTemplates.Items.Add(t);
             if (_appSettings.LastTemplateIndex >= 0 && _appSettings.LastTemplateIndex < comboTemplates.Items.Count)
                 comboTemplates.SelectedIndex = _appSettings.LastTemplateIndex;
-            else
-                comboTemplates.SelectedIndex = 0;
+            else comboTemplates.SelectedIndex = 0;
         }
 
-        // --- ДИНАМИЧЕСКИЙ ИНТЕРФЕЙС ПРИ ВЫБОРЕ ШАБЛОНА ---
         private void ComboTemplates_SelectedIndexChanged(object sender, EventArgs e)
         {
             _appSettings.LastTemplateIndex = comboTemplates.SelectedIndex;
-            AppSettings.Save(_appSettings); // Запоминаем выбор
-
+            AppSettings.Save(_appSettings);
             string selected = comboTemplates.SelectedItem.ToString();
-
-            if (comboTemplates.SelectedIndex == 0) // Обычный режим
+            if (comboTemplates.SelectedIndex == 0)
             {
-                lblPrefix.Text = "";
-                lblSuffix.Text = "";
-                // Возвращаем поле на место (X=165)
-                textBoxIP.Location = new Point(165, 28);
-                textBoxIP.Width = 180; // Широкое поле
+                lblPrefix.Text = ""; lblSuffix.Text = ""; textBoxIP.Location = new Point(165, 28); textBoxIP.Width = 180;
             }
             else
             {
-                // Режим шаблона. Разбиваем по звездочке
                 string[] parts = selected.Split('*');
-                string prefix = parts.Length > 0 ? parts[0] : "";
-                string suffix = parts.Length > 1 ? parts[1] : "";
-
-                lblPrefix.Text = prefix;
-                lblSuffix.Text = suffix;
-
-                // Пересчитываем координаты, чтобы поле ввода "встало" между текстом
+                lblPrefix.Text = parts.Length > 0 ? parts[0] : "";
+                lblSuffix.Text = parts.Length > 1 ? parts[1] : "";
                 int startX = 165;
-
-                // Сдвигаем префикс
                 lblPrefix.Location = new Point(startX, 30);
-
-                // Сдвигаем поле ввода сразу за префиксом
                 textBoxIP.Location = new Point(startX + lblPrefix.Width - 5, 28);
-                textBoxIP.Width = 70; // Узкое поле (только для ID)
-
-                // Сдвигаем суффикс сразу за полем ввода
+                textBoxIP.Width = 70;
                 lblSuffix.Location = new Point(textBoxIP.Location.X + textBoxIP.Width, 30);
             }
         }
@@ -224,9 +240,8 @@ namespace PingMonitor
             SettingsForm sf = new SettingsForm(_appSettings);
             if (sf.ShowDialog() == DialogResult.OK)
             {
-                sf.ApplySettings();
-                _appSettings = sf.Settings;
-                UpdateTemplatesList(); // Обновляем список, если добавили новый
+                sf.ApplySettings(); _appSettings = sf.Settings;
+                UpdateTemplatesList();
                 foreach (Control c in flowLayoutPanel1.Controls) if (c is PingTile pt) pt.UpdateSettings(_appSettings);
             }
         }
@@ -236,36 +251,14 @@ namespace PingMonitor
             string rawInput = textBoxIP.Text.Trim();
             string aliasInput = textBoxName.Text.Trim();
             if (string.IsNullOrWhiteSpace(rawInput)) return;
-
-            string finalAddress = rawInput;
-            string finalAlias = aliasInput;
-
-            // Если выбран шаблон (не "Обычный ввод")
+            string finalAddress = rawInput; string finalAlias = aliasInput;
             if (comboTemplates.SelectedIndex > 0)
             {
                 string template = comboTemplates.SelectedItem.ToString();
-                // Заменяем * на введенный текст
                 finalAddress = template.Replace("*", rawInput);
-
-                // Если имя не задано, используем ID (rawInput) как имя
                 if (string.IsNullOrEmpty(finalAlias)) finalAlias = rawInput;
             }
-
             AddTile(finalAddress, finalAlias);
-        }
-
-        // ... Остальные методы (AddTile, AdjustWindowSize, etc) те же ...
-        // ... (Не забудь скопировать их из старого кода, если заменяешь весь файл) ...
-
-        private void AddTile(string ip, string alias)
-        {
-            if (string.IsNullOrWhiteSpace(ip)) return;
-            PingTile tile = new PingTile(ip, alias, _appSettings);
-            tile.RemoveRequested += (s, ev) => { tile.Stop(); flowLayoutPanel1.Controls.Remove(tile); tile.Dispose(); AdjustWindowSize(); };
-            flowLayoutPanel1.Controls.Add(tile);
-            flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
-            textBoxIP.Clear(); textBoxName.Clear(); textBoxIP.Focus();
-            AdjustWindowSize();
         }
 
         private void AdjustWindowSize()

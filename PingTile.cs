@@ -23,7 +23,7 @@ namespace PingMonitor
 
         private string _address;
         private string _alias;
-        private AppSettings _settings; // <-- Настройки
+        private AppSettings _settings;
         private DateTime _lastSoundTime = DateTime.MinValue;
 
         private CancellationTokenSource _cts;
@@ -56,18 +56,32 @@ namespace PingMonitor
         public string Address => _address;
         public string Alias => _alias;
 
-        // КОНСТРУКТОР
         public PingTile(string address, string alias, AppSettings settings)
         {
             this.DoubleBuffered = true;
             _address = address;
             _alias = alias;
-            _settings = settings; // Сохраняем настройки
+            _settings = settings;
 
             AddToLog("Мониторинг запущен");
             InitializeCustomUI();
             StartPing();
         }
+
+        // --- НОВЫЙ МЕТОД ДЛЯ DRAG & DROP ---
+        // Позволяет форме подписаться на нажатие мыши на ЛЮБОМ элементе плитки
+        public void EnableDragDrop(MouseEventHandler mouseDownHandler)
+        {
+            this.MouseDown += mouseDownHandler;
+            foreach (Control c in this.Controls)
+            {
+                if (c != btnClose) // Крестик не должен вызывать перетаскивание
+                {
+                    c.MouseDown += mouseDownHandler;
+                }
+            }
+        }
+        // -----------------------------------
 
         public void UpdateSettings(AppSettings newSettings)
         {
@@ -89,13 +103,11 @@ namespace PingMonitor
         {
             StringBuilder sb = new StringBuilder();
             long total = 0, lost = 0, cntLt100 = 0, cnt100to200 = 0, cntGt200 = 0;
-            int recentTotal = 0, recentLost = 0;
             List<string> logsCopy = new List<string>();
 
             lock (_statsLock)
             {
                 total = _totalPings; lost = _lostPings;
-                recentTotal = _history.Count; recentLost = _history.Count(x => !x);
                 cntLt100 = _statLt100; cnt100to200 = _stat100to200; cntGt200 = _statGt200;
                 logsCopy.AddRange(_logEvents);
             }
@@ -161,10 +173,18 @@ namespace PingMonitor
             ContextMenuStrip menu = new ContextMenuStrip();
             menu.Items.Add("📄 Журнал событий", null, (s, e) => ShowLogWindow());
             menu.Items.Add(new ToolStripSeparator());
+
+            // --- НОВОЕ: ОТКРЫТЬ CMD PING -T ---
+            menu.Items.Add("Открыть CMD (Ping -t)", null, (s, e) => {
+                try { Process.Start("cmd.exe", $"/k ping {_address} -t"); } catch { }
+            });
+
             menu.Items.Add("Trace Route", null, (s, e) => { try { Process.Start("cmd.exe", $"/k tracert {_address}"); } catch { } });
+
             var itemGraph = new ToolStripMenuItem("Показывать график") { Checked = _showGraph, CheckOnClick = true };
             itemGraph.Click += (s, e) => { _showGraph = itemGraph.Checked; Invalidate(); };
             menu.Items.Add(itemGraph);
+
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Копировать адрес", null, (s, e) => Clipboard.SetText(_address));
 
@@ -184,9 +204,10 @@ namespace PingMonitor
                 List<PointF> points = new List<PointF>();
                 points.Add(new PointF(0, this.Height));
                 float xStep = (float)this.Width / (MaxGraphPoints - 1);
+
                 long maxPing = 0;
                 lock (_statsLock) { if (_pingValues.Count > 0) maxPing = _pingValues.Max(); }
-                if (maxPing < 50) maxPing = 50;
+                if (maxPing < 100) maxPing = 100; // Минимальный масштаб 100мс
 
                 long[] values;
                 lock (_statsLock) { values = _pingValues.ToArray(); }
@@ -194,6 +215,8 @@ namespace PingMonitor
                 for (int i = 0; i < values.Length; i++)
                 {
                     float y = this.Height - ((float)values[i] / maxPing * (this.Height - 30));
+                    // Ограничиваем, чтобы график не улетал в небеса при timeout
+                    if (y < 30) y = 30;
                     points.Add(new PointF(i * xStep, y));
                 }
                 points.Add(new PointF((values.Length - 1) * xStep, this.Height));
@@ -219,15 +242,26 @@ namespace PingMonitor
                     long rtt = 0;
                     try
                     {
-                        PingReply reply = await pinger.SendPingAsync(_address, 2000);
-                        if (reply.Status == IPStatus.Success) { success = true; rtt = reply.RoundtripTime; }
-                        else { rtt = 2000; }
-                    }
-                    catch { success = false; rtt = 2000; }
+                        // --- ИЗМЕНЕНО: Таймаут теперь 5000 мс (5 сек) ---
+                        PingReply reply = await pinger.SendPingAsync(_address, 5000);
 
-                    lock (_statsLock) { UpdateStats(success, rtt); UpdateGraphData(rtt); }
+                        if (reply.Status == IPStatus.Success)
+                        {
+                            success = true;
+                            rtt = reply.RoundtripTime;
+                        }
+                        else
+                        {
+                            rtt = 0; // При ошибке ставим 0 или спец значение
+                        }
+                    }
+                    catch { success = false; rtt = 0; }
+
+                    // Если успех, но пинг очень большой (напр 4000), это не ошибка, просто лаг
+
+                    lock (_statsLock) { UpdateStats(success, rtt); UpdateGraphData(success ? rtt : 5000); } // Для графика рисуем 5000 при сбое
                     CheckAndLogState(success, rtt);
-                    HandleAudioAlerts(success, rtt); // <--- Звуки!
+                    HandleAudioAlerts(success, rtt);
                     UpdateUI(success, rtt);
                     await Task.Delay(1000, _cts.Token);
                 }
@@ -240,16 +274,14 @@ namespace PingMonitor
             if ((DateTime.Now - _lastSoundTime).TotalSeconds < 10) return;
             bool played = false;
 
-            // Если упал
             if (!success && _settings.LossAlertEnabled)
             {
-                if (_lastStateWasSuccess == true) // Смена статуса
+                if (_lastStateWasSuccess == true)
                 {
                     AudioManager.PlaySound(_settings.LossSoundFile, _settings.LossVolume);
                     played = true;
                 }
             }
-            // Высокий пинг
             if (success && _settings.HighPingAlertEnabled && rtt > _settings.HighPingThreshold)
             {
                 AudioManager.PlaySound(_settings.HighPingSoundFile, _settings.HighPingVolume);
