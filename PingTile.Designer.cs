@@ -91,8 +91,8 @@
         #endregion
 
         private System.Windows.Forms.Panel pnlStatus;
-        private System.Windows.Forms.Label lblAddress;
-        private System.Windows.Forms.Label lblPing;
-        private System.Windows.Forms.Label lblStats;
+        //private System.Windows.Forms.Label lblAddress;
+        //private System.Windows.Forms.Label lblPing;
+        //private System.Windows.Forms.Label lblStats;
     }
 }

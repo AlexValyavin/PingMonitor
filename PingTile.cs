@@ -47,9 +47,9 @@ namespace PingMonitor
 
         public event EventHandler RemoveRequested;
 
-        //private Label lblAddress;
-        //private Label lblPing;
-        //private Label lblStats;
+        private Label lblAddress;
+        private Label lblPing;
+        private Label lblStats;
         private Panel pnlStatusIndicator;
         private Label btnClose;
 
@@ -68,20 +68,63 @@ namespace PingMonitor
             StartPing();
         }
 
-        // --- НОВЫЙ МЕТОД ДЛЯ DRAG & DROP ---
-        // Позволяет форме подписаться на нажатие мыши на ЛЮБОМ элементе плитки
-        public void EnableDragDrop(MouseEventHandler mouseDownHandler)
+        // Включаем подписку на события мыши (для DragDrop и DoubleClick)
+        public void EnableMouseEvents(MouseEventHandler mouseDownHandler, MouseEventHandler mouseMoveHandler, MouseEventHandler mouseUpHandler)
         {
-            this.MouseDown += mouseDownHandler;
-            foreach (Control c in this.Controls)
+            // Подписываемся на события для всех контролов, чтобы ловить клики везде
+            AddMouseHandlers(this, mouseDownHandler, mouseMoveHandler, mouseUpHandler);
+        }
+
+        private void AddMouseHandlers(Control c, MouseEventHandler down, MouseEventHandler move, MouseEventHandler up)
+        {
+            if (c != btnClose && c != lblAddress) // lblAddress исключаем, у него своя логика DoubleClick, но drag тоже нужен
             {
-                if (c != btnClose) // Крестик не должен вызывать перетаскивание
-                {
-                    c.MouseDown += mouseDownHandler;
-                }
+                c.MouseDown += down;
+                c.MouseMove += move;
+                c.MouseUp += up;
+            }
+
+            // Для заголовка добавляем и drag, и double click
+            if (c == lblAddress)
+            {
+                c.MouseDown += down;
+                c.MouseMove += move;
+                c.MouseUp += up;
+            }
+
+            foreach (Control child in c.Controls)
+            {
+                AddMouseHandlers(child, down, move, up);
             }
         }
-        // -----------------------------------
+
+        // --- ЛОГИКА ПЕРЕИМЕНОВАНИЯ ---
+        private void EditName()
+        {
+            string currentName = !string.IsNullOrEmpty(_alias) ? _alias : _address;
+            string newName = InputDialog.Show("Переименовать", "Введите новое имя для " + _address, currentName);
+
+            if (newName != null) // Если не нажали Отмена
+            {
+                _alias = newName;
+                UpdateHeaderUI();
+            }
+        }
+
+        private void UpdateHeaderUI()
+        {
+            if (!string.IsNullOrEmpty(_alias))
+            {
+                lblAddress.Text = _alias;
+                lblAddress.Font = new Font("Segoe UI", 11, FontStyle.Bold);
+            }
+            else
+            {
+                lblAddress.Text = _address;
+                lblAddress.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            }
+        }
+        // -----------------------------
 
         public void UpdateSettings(AppSettings newSettings)
         {
@@ -153,8 +196,12 @@ namespace PingMonitor
             btnClose.BringToFront();
 
             lblAddress = new Label { ForeColor = ColorTextMain, BackColor = Color.Transparent, AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 0) };
-            if (!string.IsNullOrEmpty(_alias)) { lblAddress.Text = _alias; lblAddress.Font = new Font("Segoe UI", 11, FontStyle.Bold); lblAddress.Height = 25; }
-            else { lblAddress.Text = _address; lblAddress.Font = new Font("Segoe UI", 12, FontStyle.Bold); lblAddress.Height = 30; }
+
+            // --- ПОДПИСКА НА ДВОЙНОЙ КЛИК ---
+            lblAddress.DoubleClick += (s, e) => EditName();
+            // --------------------------------
+
+            UpdateHeaderUI(); // Устанавливаем текст
             this.Controls.Add(lblAddress);
 
             lblStats = new Label { Text = "Waiting...", ForeColor = ColorTextDim, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8), Dock = DockStyle.Bottom, TextAlign = ContentAlignment.MiddleCenter, Height = 25 };
@@ -171,20 +218,17 @@ namespace PingMonitor
         private void SetupContextMenu()
         {
             ContextMenuStrip menu = new ContextMenuStrip();
-            menu.Items.Add("📄 Журнал событий", null, (s, e) => ShowLogWindow());
+
+            // Добавим пункт переименования и в меню
+            menu.Items.Add("✏ Переименовать", null, (s, e) => EditName());
             menu.Items.Add(new ToolStripSeparator());
 
-            // --- НОВОЕ: ОТКРЫТЬ CMD PING -T ---
-            menu.Items.Add("Открыть CMD (Ping -t)", null, (s, e) => {
-                try { Process.Start("cmd.exe", $"/k ping {_address} -t"); } catch { }
-            });
-
+            menu.Items.Add("📄 Журнал событий", null, (s, e) => ShowLogWindow());
+            menu.Items.Add("Открыть CMD (Ping -t)", null, (s, e) => { try { Process.Start("cmd.exe", $"/k ping {_address} -t"); } catch { } });
             menu.Items.Add("Trace Route", null, (s, e) => { try { Process.Start("cmd.exe", $"/k tracert {_address}"); } catch { } });
-
             var itemGraph = new ToolStripMenuItem("Показывать график") { Checked = _showGraph, CheckOnClick = true };
             itemGraph.Click += (s, e) => { _showGraph = itemGraph.Checked; Invalidate(); };
             menu.Items.Add(itemGraph);
-
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Копировать адрес", null, (s, e) => Clipboard.SetText(_address));
 
@@ -204,10 +248,9 @@ namespace PingMonitor
                 List<PointF> points = new List<PointF>();
                 points.Add(new PointF(0, this.Height));
                 float xStep = (float)this.Width / (MaxGraphPoints - 1);
-
                 long maxPing = 0;
                 lock (_statsLock) { if (_pingValues.Count > 0) maxPing = _pingValues.Max(); }
-                if (maxPing < 100) maxPing = 100; // Минимальный масштаб 100мс
+                if (maxPing < 100) maxPing = 100;
 
                 long[] values;
                 lock (_statsLock) { values = _pingValues.ToArray(); }
@@ -215,7 +258,6 @@ namespace PingMonitor
                 for (int i = 0; i < values.Length; i++)
                 {
                     float y = this.Height - ((float)values[i] / maxPing * (this.Height - 30));
-                    // Ограничиваем, чтобы график не улетал в небеса при timeout
                     if (y < 30) y = 30;
                     points.Add(new PointF(i * xStep, y));
                 }
@@ -242,24 +284,13 @@ namespace PingMonitor
                     long rtt = 0;
                     try
                     {
-                        // --- ИЗМЕНЕНО: Таймаут теперь 5000 мс (5 сек) ---
                         PingReply reply = await pinger.SendPingAsync(_address, 5000);
-
-                        if (reply.Status == IPStatus.Success)
-                        {
-                            success = true;
-                            rtt = reply.RoundtripTime;
-                        }
-                        else
-                        {
-                            rtt = 0; // При ошибке ставим 0 или спец значение
-                        }
+                        if (reply.Status == IPStatus.Success) { success = true; rtt = reply.RoundtripTime; }
+                        else { rtt = 0; }
                     }
                     catch { success = false; rtt = 0; }
 
-                    // Если успех, но пинг очень большой (напр 4000), это не ошибка, просто лаг
-
-                    lock (_statsLock) { UpdateStats(success, rtt); UpdateGraphData(success ? rtt : 5000); } // Для графика рисуем 5000 при сбое
+                    lock (_statsLock) { UpdateStats(success, rtt); UpdateGraphData(success ? rtt : 5000); }
                     CheckAndLogState(success, rtt);
                     HandleAudioAlerts(success, rtt);
                     UpdateUI(success, rtt);

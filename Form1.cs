@@ -21,6 +21,12 @@ namespace PingMonitor
         private Label lblPrefix;
         private Label lblSuffix;
 
+        // --- ДЛЯ ПЕРЕТАСКИВАНИЯ ПЛИТОК ---
+        private Point _dragStartPoint;
+        private bool _isMouseDown = false;
+        private PingTile _potentialDragTile = null;
+        // ---------------------------------
+
         [DllImport("user32.dll")] public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
         private void DragWindow(object sender, MouseEventArgs e) { if (e.Button == MouseButtons.Left) { ReleaseCapture(); SendMessage(Handle, 0xA1, 0x2, 0); } }
@@ -115,70 +121,76 @@ namespace PingMonitor
             btnExit.MouseEnter += (s, e) => btnExit.ForeColor = Color.Red; btnExit.MouseLeave += (s, e) => btnExit.ForeColor = Color.Gray;
             panel1.Controls.Add(btnExit);
 
-            // --- DRAG & DROP НАСТРОЙКИ ---
+            // --- DRAG & DROP ---
             flowLayoutPanel1.Dock = DockStyle.Fill;
             flowLayoutPanel1.BackColor = Color.FromArgb(30, 30, 30);
             flowLayoutPanel1.AutoScroll = true;
             flowLayoutPanel1.Padding = new Padding(10);
 
-            // Включаем поддержку перетаскивания
             flowLayoutPanel1.AllowDrop = true;
             flowLayoutPanel1.DragEnter += FlowLayoutPanel1_DragEnter;
             flowLayoutPanel1.DragOver += FlowLayoutPanel1_DragOver;
 
             UpdateTemplatesList();
-
-            // Если есть сохранение списка - раскомментируй LoadDevices();
-            // LoadDevices();
-
             ResizeWindowToFit(4);
         }
 
         // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ (DRAG & DROP) ---
 
-        // 1. Начало перетаскивания (срабатывает, когда жмем на плитку)
+        // 1. Mouse Down
         private void Tile_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                // Находим плитку, на которую нажали
-                Control c = sender as Control;
-                // Если нажали на Label внутри плитки, берем Родителя (саму плитку)
-                while (c != null && !(c is PingTile)) c = c.Parent;
+                _isMouseDown = true;
+                _dragStartPoint = e.Location;
 
-                if (c is PingTile tile)
+                // Ищем саму плитку (вдруг нажали на label внутри)
+                Control c = sender as Control;
+                while (c != null && !(c is PingTile)) c = c.Parent;
+                _potentialDragTile = c as PingTile;
+            }
+        }
+
+        // 2. Mouse Move
+        private void Tile_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isMouseDown && _potentialDragTile != null)
+            {
+                // Если мышь сдвинулась, начинаем Drag
+                if (Math.Abs(e.X - _dragStartPoint.X) > SystemInformation.DragSize.Width ||
+                    Math.Abs(e.Y - _dragStartPoint.Y) > SystemInformation.DragSize.Height)
                 {
-                    // Запускаем процесс
-                    tile.DoDragDrop(tile, DragDropEffects.Move);
+                    _potentialDragTile.DoDragDrop(_potentialDragTile, DragDropEffects.Move);
+                    _isMouseDown = false;
+                    _potentialDragTile = null;
                 }
             }
         }
 
-        // 2. Входим в зону панели (разрешаем Move)
-        private void FlowLayoutPanel1_DragEnter(object sender, DragEventArgs e)
+        // 3. Mouse Up
+        private void Tile_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(PingTile)))
-                e.Effect = DragDropEffects.Move;
-            else
-                e.Effect = DragDropEffects.None;
+            _isMouseDown = false;
+            _potentialDragTile = null;
         }
 
-        // 3. Двигаем мышкой над панелью (Меняем местами)
+        private void FlowLayoutPanel1_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(PingTile))) e.Effect = DragDropEffects.Move;
+            else e.Effect = DragDropEffects.None;
+        }
+
         private void FlowLayoutPanel1_DragOver(object sender, DragEventArgs e)
         {
-            // Получаем плитку, которую тащим
             PingTile draggedTile = (PingTile)e.Data.GetData(typeof(PingTile));
-
-            // Определяем, над какой плиткой сейчас курсор
             Point pt = flowLayoutPanel1.PointToClient(new Point(e.X, e.Y));
             Control targetControl = flowLayoutPanel1.GetChildAtPoint(pt);
 
-            // Если курсор над другой плиткой, меняем их местами
             if (targetControl != null && targetControl != draggedTile && targetControl is PingTile)
             {
                 int targetIndex = flowLayoutPanel1.Controls.GetChildIndex(targetControl);
                 flowLayoutPanel1.Controls.SetChildIndex(draggedTile, targetIndex);
-                // invalidate не нужен, FlowLayout сам перерисуется
             }
         }
         // ---------------------------------------------
@@ -188,12 +200,11 @@ namespace PingMonitor
             if (string.IsNullOrWhiteSpace(ip)) return;
             PingTile tile = new PingTile(ip, alias, _appSettings);
 
-            // Подписываемся на события перетаскивания
-            tile.EnableDragDrop(Tile_MouseDown);
+            // ВОТ ЗДЕСЬ БЫЛА ОШИБКА. Теперь мы вызываем правильный метод:
+            tile.EnableMouseEvents(Tile_MouseDown, Tile_MouseMove, Tile_MouseUp);
 
             tile.RemoveRequested += (s, ev) => { tile.Stop(); flowLayoutPanel1.Controls.Remove(tile); tile.Dispose(); AdjustWindowSize(); };
 
-            // Добавляем в начало (индекс 0)
             flowLayoutPanel1.Controls.Add(tile);
             flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
 
@@ -201,7 +212,7 @@ namespace PingMonitor
             AdjustWindowSize();
         }
 
-        // ... ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ (AdjustWindowSize, Templates, etc) ...
+        // ... СТАНДАРТНЫЙ КОД ...
 
         private void UpdateTemplatesList()
         {
