@@ -195,7 +195,7 @@ namespace PingMonitor
             this.Controls.Add(btnClose);
             btnClose.BringToFront();
 
-            lblAddress = new Label { ForeColor = ColorTextMain, BackColor = Color.Transparent, AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 0) };
+            lblAddress = new Label { ForeColor = ColorTextMain, BackColor = Color.Transparent, AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 0) };
 
             // --- ПОДПИСКА НА ДВОЙНОЙ КЛИК ---
             lblAddress.DoubleClick += (s, e) => EditName();
@@ -243,7 +243,15 @@ namespace PingMonitor
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            using (Brush brush = new SolidBrush(Color.FromArgb(40, _currentStatusColor)))
+            // Создаем прямоугольник для градиента
+            RectangleF bounds = new RectangleF(0, 0, this.Width, this.Height);
+
+            // Градиент от цвета статуса (сверху) к полностью прозрачному (снизу)
+            using (LinearGradientBrush brush = new LinearGradientBrush(
+                   bounds,
+                   Color.FromArgb(100, _currentStatusColor), // Верх (поярче)
+                   Color.Transparent,                        // Низ (прозрачно)
+                   LinearGradientMode.Vertical))             // Вертикально
             {
                 List<PointF> points = new List<PointF>();
                 points.Add(new PointF(0, this.Height));
@@ -364,8 +372,16 @@ namespace PingMonitor
 
             if (InvokeRequired) { try { Invoke(new Action(() => UpdateUI(success, rtt))); } catch { } return; }
 
-            lblPing.Text = success ? $"{rtt} ms" : "TIMEOUT";
-            lblPing.ForeColor = success ? ColorTextMain : Color.FromArgb(231, 76, 60);
+            if (!success)
+            {
+                lblPing.Text = "TIMEOUT";
+                lblPing.Font = new Font("Segoe UI", 16, FontStyle.Bold); // Чуть меньше для ошибки
+            }
+            else
+            {
+                lblPing.Text = $"{rtt} ms";
+                lblPing.Font = new Font("Segoe UI", 22, FontStyle.Bold); // Крупно для цифр
+            }
             pnlStatusIndicator.BackColor = statusColor;
             lblStats.Text = statsText;
         }

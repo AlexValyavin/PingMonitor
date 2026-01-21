@@ -14,7 +14,8 @@ namespace PingMonitor
         private const int MinWindowWidth = 780;
 
         private TextBox textBoxName;
-        private CheckBox checkAlwaysOnTop;
+        //private CheckBox checkAlwaysOnTop;
+        private Label btnPin;
         private AppSettings _appSettings;
 
         private ComboBox comboTemplates;
@@ -54,7 +55,7 @@ namespace PingMonitor
 
             Font fontInputs = new Font("Segoe UI", 10F);
             Font fontHints = new Font("Segoe UI", 8F);
-
+            
             // --- HEADER CONTROLS ---
             Label lblMode = new Label { Text = "Режим / Шаблон", ForeColor = Color.DarkGray, Location = new Point(12, 8), AutoSize = true, Font = fontHints };
             panel1.Controls.Add(lblMode);
@@ -78,7 +79,11 @@ namespace PingMonitor
             textBoxIP.Location = new Point(165, 28);
             textBoxIP.Width = 100;
             textBoxIP.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { textBoxName.Focus(); e.Handled = true; e.SuppressKeyPress = true; } };
+            textBoxIP.BackColor = Color.FromArgb(60, 60, 60); // Чуть светлее фона, но темный
+            textBoxIP.ForeColor = Color.White;
+            textBoxIP.BorderStyle = BorderStyle.FixedSingle; // Плоская рамка
 
+            // То же самое для textBoxName и textBoxSuffix (если есть)
             lblSuffix = new Label { Text = "", ForeColor = Color.White, AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), BackColor = Color.Transparent };
             lblSuffix.Location = new Point(265, 30);
             panel1.Controls.Add(lblSuffix);
@@ -89,6 +94,9 @@ namespace PingMonitor
             textBoxName = new TextBox { Font = fontInputs, Location = new Point(360, 28), Width = 140 };
             textBoxName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { buttonAdd_Click(s, e); e.Handled = true; e.SuppressKeyPress = true; } };
             panel1.Controls.Add(textBoxName);
+            textBoxName.BackColor = Color.FromArgb(60, 60, 60);
+            textBoxName.ForeColor = Color.White;
+            textBoxName.BorderStyle = BorderStyle.FixedSingle;
 
             buttonAdd.Text = "Добавить";
             buttonAdd.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
@@ -96,21 +104,65 @@ namespace PingMonitor
             buttonAdd.Location = new Point(510, 27);
             buttonAdd.FlatStyle = FlatStyle.Flat; buttonAdd.BackColor = Color.FromArgb(0, 122, 204); buttonAdd.ForeColor = Color.White; buttonAdd.FlatAppearance.BorderSize = 0; buttonAdd.Cursor = Cursors.Hand;
 
-            Label btnSettings = new Label { Text = "⚙", Font = new Font("Segoe UI", 14), ForeColor = Color.Gray, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(panel1.Width - 145, 25) };
+            // --- ПРАВАЯ ЧАСТЬ ПАНЕЛИ ---
+
+            // 1. Кнопка НАСТРОЙКИ (Шестеренка)
+            Label btnSettings = new Label();
+            btnSettings.Font = new Font("Segoe MDL2 Assets", 14); // Или Segoe UI Symbol
+            btnSettings.Text = "\uE713"; // Код иконки
+            btnSettings.ForeColor = Color.Gray;
+            btnSettings.AutoSize = true;
+            btnSettings.Cursor = Cursors.Hand;
+            btnSettings.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSettings.Location = new Point(panel1.Width - 140, 20); // Y=20 - центр
             btnSettings.Click += BtnSettings_Click;
-            btnSettings.MouseEnter += (s, e) => btnSettings.ForeColor = Color.White; btnSettings.MouseLeave += (s, e) => btnSettings.ForeColor = Color.Gray;
+            btnSettings.MouseEnter += (s, e) => btnSettings.ForeColor = Color.White;
+            btnSettings.MouseLeave += (s, e) => btnSettings.ForeColor = Color.Gray;
+
+            // Тултип
+            new ToolTip().SetToolTip(btnSettings, "Настройки");
             panel1.Controls.Add(btnSettings);
 
-            Label btnInfo = new Label { Text = "ℹ", Font = new Font("Segoe UI", 14), ForeColor = Color.Gray, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(panel1.Width - 175, 25) };
+            // 2. Кнопка ИНФО (i)
+            Label btnInfo = new Label();
+            btnInfo.Font = new Font("Segoe MDL2 Assets", 14);
+            btnInfo.Text = "\uE946";
+            btnInfo.ForeColor = Color.Gray;
+            btnInfo.AutoSize = true;
+            btnInfo.Cursor = Cursors.Hand;
+            btnInfo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnInfo.Location = new Point(panel1.Width - 180, 20); // Y=20
             btnInfo.Click += (s, e) => { new AboutForm().ShowDialog(); };
-            btnInfo.MouseEnter += (s, e) => btnInfo.ForeColor = Color.White; btnInfo.MouseLeave += (s, e) => btnInfo.ForeColor = Color.Gray;
+            btnInfo.MouseEnter += (s, e) => btnInfo.ForeColor = Color.White;
+            btnInfo.MouseLeave += (s, e) => btnInfo.ForeColor = Color.Gray;
+            new ToolTip().SetToolTip(btnInfo, "Справка");
             panel1.Controls.Add(btnInfo);
 
-            checkAlwaysOnTop = new CheckBox { Appearance = Appearance.Button, Text = "📌", TextAlign = ContentAlignment.MiddleCenter, AutoSize = false, Size = new Size(40, 27), Location = new Point(panel1.Width - 110, 27), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.Gray, Cursor = Cursors.Hand };
-            checkAlwaysOnTop.FlatAppearance.BorderSize = 0;
-            checkAlwaysOnTop.CheckedChanged += (s, e) => { TopMost = checkAlwaysOnTop.Checked; if (checkAlwaysOnTop.Checked) { checkAlwaysOnTop.BackColor = Color.FromArgb(46, 204, 113); checkAlwaysOnTop.ForeColor = Color.Black; } else { checkAlwaysOnTop.BackColor = Color.FromArgb(60, 60, 60); checkAlwaysOnTop.ForeColor = Color.Gray; } };
-            panel1.Controls.Add(checkAlwaysOnTop);
+            // 3. Кнопка ЗАКРЕПИТЬ (Скрепка) - ТЕПЕРЬ LABEL
+            btnPin = new Label();
+            btnPin.Font = new Font("Segoe MDL2 Assets", 14);
+            btnPin.Text = "\uE718"; // Иконка "Откреплено"
+            btnPin.ForeColor = Color.Gray;
+            btnPin.AutoSize = true;
+            btnPin.Cursor = Cursors.Hand;
+            btnPin.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnPin.Location = new Point(panel1.Width - 100, 20); // Y=20 - Идеально ровно
 
+            btnPin.Click += (s, e) => {
+                this.TopMost = !this.TopMost; // Переключаем
+                if (this.TopMost)
+                {
+                    btnPin.Text = "\uE840"; // Иконка "Закреплено" (Закрашенная скрепка)
+                    btnPin.ForeColor = Color.FromArgb(46, 204, 113); // Зеленый
+                }
+                else
+                {
+                    btnPin.Text = "\uE718"; // Иконка "Откреплено"
+                    btnPin.ForeColor = Color.Gray;
+                }
+            };
+            new ToolTip().SetToolTip(btnPin, "Поверх всех окон");
+            panel1.Controls.Add(btnPin);
             Label btnMinimize = new Label { Text = "—", Font = new Font("Arial", 12, FontStyle.Bold), ForeColor = Color.Gray, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(panel1.Width - 65, 5) };
             btnMinimize.Click += (s, e) => WindowState = FormWindowState.Minimized;
             btnMinimize.MouseEnter += (s, e) => btnMinimize.ForeColor = Color.White; btnMinimize.MouseLeave += (s, e) => btnMinimize.ForeColor = Color.Gray;

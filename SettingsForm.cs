@@ -12,21 +12,21 @@ namespace PingMonitor
     {
         public AppSettings Settings { get; private set; }
 
-        // UI Controls
+        // --- UI ---
         private CheckBox chkLossEnable;
-        private ComboBox cmbLossSound;
-        private TrackBar trackLossVol;
+        private DarkComboBox cmbLossSound;
+        private DarkTrackBar trackLossVol;
+
         private CheckBox chkPingEnable;
-        private ComboBox cmbPingSound;
-        private TrackBar trackPingVol;
-        private NumericUpDown numPingThreshold;
+        private DarkComboBox cmbPingSound;
+        private DarkTrackBar trackPingVol;
+        private DarkNumeric numPingThreshold; // <--- Используем наш класс
 
         private ListBox lstTemplates;
         private TextBox txtNewTemplate;
         private Button btnAddTemplate;
         private Button btnDelTemplate;
 
-        // --- WINAPI ---
         [DllImport("user32.dll")] public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
         private void DragWindow(object sender, MouseEventArgs e)
@@ -36,15 +36,9 @@ namespace PingMonitor
 
         protected override CreateParams CreateParams
         {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ClassStyle |= 0x20000; // Тень
-                return cp;
-            }
+            get { CreateParams cp = base.CreateParams; cp.ClassStyle |= 0x20000; return cp; }
         }
 
-        // Ресайз
         protected override void WndProc(ref Message m)
         {
             const int WM_NCHITTEST = 0x84;
@@ -74,43 +68,28 @@ namespace PingMonitor
             this.Size = new Size(500, 600);
             this.StartPosition = FormStartPosition.CenterParent;
             this.BackColor = Color.FromArgb(30, 30, 30);
-            this.Padding = new Padding(1); // Тонкая рамка
+            this.Padding = new Padding(1);
             this.DoubleBuffered = true;
 
-            // 1. HEADER (Dock = Top)
-            // Добавляем первым, чтобы он прилип к самому верху
-            Label lblTitle = new Label
-            {
-                Text = "Настройки",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                ForeColor = Color.White,
-                Dock = DockStyle.Top,
-                Height = 50,
-                TextAlign = ContentAlignment.MiddleCenter
-            };
+            // Header
+            Label lblTitle = new Label { Text = "Настройки", Font = new Font("Segoe UI", 14, FontStyle.Bold), ForeColor = Color.White, Dock = DockStyle.Top, Height = 50, TextAlign = ContentAlignment.MiddleCenter };
             lblTitle.MouseDown += DragWindow;
             this.Controls.Add(lblTitle);
 
-            // 2. BOTTOM BUTTONS (Dock = Bottom)
-            // Добавляем вторым, прилипнет к низу
+            // Buttons
             Panel pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = Color.Transparent };
-
             Button btnSave = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, BackColor = Color.FromArgb(46, 204, 113), FlatStyle = FlatStyle.Flat, ForeColor = Color.Black, Size = new Size(120, 35), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            btnSave.Location = new Point(pnlBottom.Width - 260, 15);
-            btnSave.FlatAppearance.BorderSize = 0;
-
+            btnSave.Location = new Point(pnlBottom.Width - 260, 15); btnSave.FlatAppearance.BorderSize = 0;
             Button btnCancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Size = new Size(120, 35), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            btnCancel.Location = new Point(pnlBottom.Width - 130, 15);
-            btnCancel.FlatAppearance.BorderSize = 0;
-
+            btnCancel.Location = new Point(pnlBottom.Width - 130, 15); btnCancel.FlatAppearance.BorderSize = 0;
             pnlBottom.Controls.Add(btnSave); pnlBottom.Controls.Add(btnCancel);
             this.Controls.Add(pnlBottom);
 
-            // 3. TAB CONTROL (Dock = Fill)
-            // Займет всё оставшееся место между Header и Bottom
+            // Tabs
             TabControl tabControl = new TabControl { Dock = DockStyle.Fill };
             tabControl.SizeMode = TabSizeMode.Fixed;
             tabControl.ItemSize = new Size(130, 35);
+            tabControl.Padding = new Point(0, 0);
             tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl.DrawItem += TabControl_DrawItem;
 
@@ -120,71 +99,100 @@ namespace PingMonitor
             tabControl.TabPages.Add(tabAlerts);
             tabControl.TabPages.Add(tabTemplates);
             this.Controls.Add(tabControl);
-            // Важно: перенести на передний план, чтобы корректно занял место
             tabControl.BringToFront();
 
-            // === Вкладка 1: Оповещения ===
-            // (Тут используем GroupBox с Anchor, так как контент фиксированный)
-            GroupBox grpLoss = CreateGroup("🔴 При потере связи", 10, tabAlerts);
+            // === Tab 1 ===
+            DarkGroupBox grpLoss = CreateGroup("🔴 При потере связи", 10, tabAlerts);
             grpLoss.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpLoss.Width = tabAlerts.Width - 20;
-            chkLossEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true }; grpLoss.Controls.Add(chkLossEnable);
+
+            chkLossEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true };
+            grpLoss.Controls.Add(chkLossEnable);
+
             grpLoss.Controls.Add(new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true });
-            cmbLossSound = CreateSoundCombo(15, 80); cmbLossSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; cmbLossSound.Width = grpLoss.Width - 100; grpLoss.Controls.Add(cmbLossSound);
-            Button btnTest1 = CreateTestButton(cmbLossSound, () => trackLossVol.Value); btnTest1.Anchor = AnchorStyles.Top | AnchorStyles.Right; btnTest1.Location = new Point(grpLoss.Width - 70, 79); grpLoss.Controls.Add(btnTest1);
-            grpLoss.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true });
-            trackLossVol = CreateTrackBar(15, 130); trackLossVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; trackLossVol.Width = grpLoss.Width - 30; grpLoss.Controls.Add(trackLossVol);
 
-            GroupBox grpPing = CreateGroup("🟡 При высоком пинге", 200, tabAlerts);
+            cmbLossSound = CreateSoundCombo(15, 80);
+            cmbLossSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cmbLossSound.Width = grpLoss.Width - 120;
+            grpLoss.Controls.Add(cmbLossSound);
+
+            Button btnTest1 = CreateTestButton(cmbLossSound, () => trackLossVol.Value);
+            btnTest1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnTest1.Location = new Point(grpLoss.Width - 90, 79);
+            grpLoss.Controls.Add(btnTest1);
+
+            grpLoss.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 115), AutoSize = true });
+
+            trackLossVol = new DarkTrackBar { Location = new Point(15, 135), Height = 30 };
+            trackLossVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            trackLossVol.Width = grpLoss.Width - 30;
+            grpLoss.Controls.Add(trackLossVol);
+
+
+            DarkGroupBox grpPing = CreateGroup("🟡 При высоком пинге", 210, tabAlerts);
             grpPing.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpPing.Width = tabAlerts.Width - 20;
-            chkPingEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true }; grpPing.Controls.Add(chkPingEnable);
+
+            chkPingEnable = new CheckBox { Text = "Включить звук", ForeColor = Color.White, Location = new Point(15, 30), AutoSize = true };
+            grpPing.Controls.Add(chkPingEnable);
+
             grpPing.Controls.Add(new Label { Text = "Порог (мс):", ForeColor = Color.Gray, Location = new Point(150, 31), AutoSize = true });
-            numPingThreshold = new NumericUpDown { Location = new Point(230, 29), Width = 60, Minimum = 10, Maximum = 5000 }; grpPing.Controls.Add(numPingThreshold);
+
+            // Используем DarkNumeric
+            numPingThreshold = new DarkNumeric { Location = new Point(240, 29), Width = 70, Minimum = 10, Maximum = 5000 };
+            grpPing.Controls.Add(numPingThreshold);
+
             grpPing.Controls.Add(new Label { Text = "Звук:", ForeColor = Color.Gray, Location = new Point(15, 60), AutoSize = true });
-            cmbPingSound = CreateSoundCombo(15, 80); cmbPingSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; cmbPingSound.Width = grpPing.Width - 100; grpPing.Controls.Add(cmbPingSound);
-            Button btnTest2 = CreateTestButton(cmbPingSound, () => trackPingVol.Value); btnTest2.Anchor = AnchorStyles.Top | AnchorStyles.Right; btnTest2.Location = new Point(grpPing.Width - 70, 79); grpPing.Controls.Add(btnTest2);
-            grpPing.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 110), AutoSize = true });
-            trackPingVol = CreateTrackBar(15, 130); trackPingVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; trackPingVol.Width = grpPing.Width - 30; grpPing.Controls.Add(trackPingVol);
 
-            // === Вкладка 2: Шаблоны (РЕЗИНОВАЯ ВЕРСТКА) ===
+            cmbPingSound = CreateSoundCombo(15, 80);
+            cmbPingSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cmbPingSound.Width = grpPing.Width - 120;
+            grpPing.Controls.Add(cmbPingSound);
 
-            // 1. Панель ввода (Сверху)
-            Panel pnlTemplatesTop = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.Transparent, Padding = new Padding(10) };
-            tabTemplates.Controls.Add(pnlTemplatesTop);
+            Button btnTest2 = CreateTestButton(cmbPingSound, () => trackPingVol.Value);
+            btnTest2.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnTest2.Location = new Point(grpPing.Width - 90, 79);
+            grpPing.Controls.Add(btnTest2);
 
-            Label lblHint = new Label { Text = "Создайте маски. '*' заменяет курсор.\nПримеры: 192.168.1.*", ForeColor = Color.Gray, AutoSize = true, Dock = DockStyle.Top };
-            pnlTemplatesTop.Controls.Add(lblHint);
+            grpPing.Controls.Add(new Label { Text = "Громкость:", ForeColor = Color.Gray, Location = new Point(15, 115), AutoSize = true });
 
-            // Контейнер для строки ввода
-            Panel pnlInputRow = new Panel { Dock = DockStyle.Bottom, Height = 30 };
-            pnlTemplatesTop.Controls.Add(pnlInputRow);
+            trackPingVol = new DarkTrackBar { Location = new Point(15, 135), Height = 30 };
+            trackPingVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            trackPingVol.Width = grpPing.Width - 30;
+            grpPing.Controls.Add(trackPingVol);
 
-            btnAddTemplate = new Button { Text = "Добавить", Width = 100, Dock = DockStyle.Right, BackColor = Color.FromArgb(0, 122, 204), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnAddTemplate.FlatAppearance.BorderSize = 0;
+
+            // === Tab 2 ===
+            Label lblHint = new Label { Text = "Создайте маски. Символ '*' заменяет курсор.\nПримеры: 192.168.1.*  или  *.google.com", ForeColor = Color.Gray, AutoSize = true, Location = new Point(20, 20) };
+            tabTemplates.Controls.Add(lblHint);
+
+            Label lblNew = new Label { Text = "Новый шаблон:", ForeColor = Color.White, AutoSize = true, Location = new Point(20, 70) };
+            tabTemplates.Controls.Add(lblNew);
+
+            btnAddTemplate = new Button { Text = "Добавить", Width = 100, Height = 27, BackColor = Color.FromArgb(0, 122, 204), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            btnAddTemplate.Location = new Point(tabTemplates.Width - 130, 94);
             btnAddTemplate.Click += BtnAddTemplate_Click;
-            pnlInputRow.Controls.Add(btnAddTemplate);
+            tabTemplates.Controls.Add(btnAddTemplate);
 
-            txtNewTemplate = new TextBox { Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill };
-            pnlInputRow.Controls.Add(txtNewTemplate);
-            // Хак, чтобы TextBox не прилипал к кнопке (добавляем Panel-спейсер или просто Margin)
-            txtNewTemplate.BringToFront(); // Чтобы Dock.Fill работал корректно с Dock.Right
+            txtNewTemplate = new TextBox { Location = new Point(20, 95), Font = new Font("Segoe UI", 10), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
+            txtNewTemplate.Width = tabTemplates.Width - 160;
+            tabTemplates.Controls.Add(txtNewTemplate);
 
-            // 2. Кнопка удаления (Снизу)
-            btnDelTemplate = new Button { Text = "Удалить выбранный", Height = 40, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnDelTemplate.FlatAppearance.BorderSize = 0;
-            btnDelTemplate.Click += (s, e) => { if (lstTemplates.SelectedIndex >= 0) lstTemplates.Items.RemoveAt(lstTemplates.SelectedIndex); };
-            tabTemplates.Controls.Add(btnDelTemplate);
-
-            // 3. Список (Заполняет всё остальное)
-            lstTemplates = new ListBox { Font = new Font("Segoe UI", 10), BackColor = Color.FromArgb(45, 45, 48), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
+            lstTemplates = new ListBox { Location = new Point(20, 140), Font = new Font("Segoe UI", 10), BackColor = Color.FromArgb(45, 45, 48), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
+            lstTemplates.Width = tabTemplates.Width - 40;
+            lstTemplates.Height = tabTemplates.Height - 190;
             tabTemplates.Controls.Add(lstTemplates);
-            lstTemplates.BringToFront(); // Важно! Чтобы он занял центр между Top и Bottom
+
+            btnDelTemplate = new Button { Text = "Удалить выбранный", Height = 35, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Cursor = Cursors.Hand, Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
+            btnDelTemplate.Location = new Point(20, tabTemplates.Height - 55);
+            btnDelTemplate.Width = tabTemplates.Width - 40;
+            btnDelTemplate.Click += (s, e) => {
+                if (lstTemplates.SelectedIndex != -1) lstTemplates.Items.RemoveAt(lstTemplates.SelectedIndex);
+            };
+            tabTemplates.Controls.Add(btnDelTemplate);
         }
 
         private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
-            TabControl tc = sender as TabControl;
-            if (e.Index >= tc.TabPages.Count) return;
-
+            TabControl tc = sender as TabControl; if (e.Index >= tc.TabPages.Count) return;
             TabPage page = tc.TabPages[e.Index]; Rectangle rect = e.Bounds;
             using (Brush backBrush = (e.State == DrawItemState.Selected) ? new SolidBrush(Color.FromArgb(50, 50, 50)) : new SolidBrush(Color.FromArgb(30, 30, 30))) { e.Graphics.FillRectangle(backBrush, rect); }
             Color textColor = (e.State == DrawItemState.Selected) ? Color.White : Color.Gray;
@@ -200,22 +208,22 @@ namespace PingMonitor
             txtNewTemplate.Clear();
         }
 
-        private GroupBox CreateGroup(string text, int y, Control parent)
+        private DarkGroupBox CreateGroup(string text, int y, Control parent)
         {
-            GroupBox g = new GroupBox { Text = text, Location = new Point(10, y), Size = new Size(390, 180), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            DarkGroupBox g = new DarkGroupBox { Text = text, Location = new Point(10, y), Size = new Size(390, 190), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             parent.Controls.Add(g); return g;
         }
-        private ComboBox CreateSoundCombo(int x, int y)
+        private DarkComboBox CreateSoundCombo(int x, int y)
         {
-            ComboBox cb = new ComboBox { Location = new Point(x, y), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
+            DarkComboBox cb = new DarkComboBox { Location = new Point(x, y), Width = 200 };
             if (Directory.Exists(@"C:\Windows\Media")) cb.Items.AddRange(Directory.GetFiles(@"C:\Windows\Media", "*.wav").Select(Path.GetFileName).ToArray());
             return cb;
         }
-        private TrackBar CreateTrackBar(int x, int y) => new TrackBar { Location = new Point(x, y), Width = 300, Maximum = 100, TickFrequency = 10, SmallChange = 5 };
 
-        private Button CreateTestButton(ComboBox cb, Func<int> getVol)
+        // КНОПКА PLAY: Увеличили высоту с 23 до 27
+        private Button CreateTestButton(DarkComboBox cb, Func<int> getVol)
         {
-            Button b = new Button { Text = "Play", Width = 50, Height = 23, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White };
+            Button b = new Button { Text = "Play", Width = 50, Height = 27, BackColor = Color.FromArgb(60, 60, 60), FlatStyle = FlatStyle.Flat, ForeColor = Color.White };
             b.Click += (s, e) => AudioManager.PlaySound(Path.Combine(@"C:\Windows\Media", cb.SelectedItem?.ToString() ?? ""), getVol());
             return b;
         }
@@ -233,7 +241,7 @@ namespace PingMonitor
             foreach (var t in Settings.IpTemplates) lstTemplates.Items.Add(t);
         }
 
-        private void SetComboValue(ComboBox cb, string fullPath)
+        private void SetComboValue(DarkComboBox cb, string fullPath)
         {
             string fileName = Path.GetFileName(fullPath);
             if (cb.Items.Contains(fileName)) cb.SelectedItem = fileName;

@@ -70,11 +70,13 @@ namespace PingMonitor
 
             // Текстовое поле
             RichTextBox rtb = new RichTextBox();
+            rtb.BackColor = Color.FromArgb(30, 30, 30); // Такой же как фон окна
+            rtb.BorderStyle = BorderStyle.None; // <--- УБРАТЬ РАМКУ ОБЯЗАТЕЛЬНО
             rtb.Dock = DockStyle.Fill;
-            rtb.BackColor = Color.FromArgb(30, 30, 30);
+            //rtb.BackColor = Color.FromArgb(30, 30, 30);
             rtb.ForeColor = Color.LightGray;
             rtb.Font = new Font("Segoe UI", 9);
-            rtb.BorderStyle = BorderStyle.None;
+            //rtb.BorderStyle = BorderStyle.None;
             rtb.ReadOnly = true;
             rtb.ScrollBars = RichTextBoxScrollBars.Vertical;
             rtb.SelectionIndent = 15;
