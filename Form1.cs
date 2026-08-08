@@ -37,6 +37,7 @@ namespace PingMonitor
             InitializeComponent();
             _appSettings = AppSettings.Load();
             SetupFormDesign();
+            this.FormClosing += Form1_FormClosing;
         }
 
         private void SetupFormDesign()
@@ -185,6 +186,7 @@ namespace PingMonitor
 
             UpdateTemplatesList();
             ResizeWindowToFit(4);
+            LoadPinnedTiles();
         }
 
         // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ (DRAG & DROP) ---
@@ -247,7 +249,7 @@ namespace PingMonitor
         }
         // ---------------------------------------------
 
-        private void AddTile(string ip, string alias)
+        private void AddTile(string ip, string alias, bool pinned = false)
         {
             if (string.IsNullOrWhiteSpace(ip)) return;
             PingTile tile = new PingTile(ip, alias, _appSettings);
@@ -255,7 +257,11 @@ namespace PingMonitor
             // ВОТ ЗДЕСЬ БЫЛА ОШИБКА. Теперь мы вызываем правильный метод:
             tile.EnableMouseEvents(Tile_MouseDown, Tile_MouseMove, Tile_MouseUp);
 
-            tile.RemoveRequested += (s, ev) => { tile.Stop(); flowLayoutPanel1.Controls.Remove(tile); tile.Dispose(); AdjustWindowSize(); };
+            if (pinned) tile.SetPinned(true);
+
+            tile.PinStateChanged += (s, ps) => SavePinnedState();
+
+            tile.RemoveRequested += (s, ev) => { tile.Stop(); flowLayoutPanel1.Controls.Remove(tile); SavePinnedState(); tile.Dispose(); AdjustWindowSize(); };
 
             flowLayoutPanel1.Controls.Add(tile);
             flowLayoutPanel1.Controls.SetChildIndex(tile, 0);
@@ -263,6 +269,38 @@ namespace PingMonitor
             textBoxIP.Clear(); textBoxName.Clear(); textBoxIP.Focus();
             AdjustWindowSize();
         }
+
+        // --- ЗАКРЕПЛЕНИЕ ПЛИТОК ---
+        private void LoadPinnedTiles()
+        {
+            for (int i = 0; i < _appSettings.PinnedAddresses.Count; i++)
+            {
+                string addr = _appSettings.PinnedAddresses[i];
+                string alias = i < _appSettings.PinnedAliases.Count ? _appSettings.PinnedAliases[i] : "";
+                AddTile(addr, alias, pinned: true);
+            }
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            SavePinnedState();
+        }
+
+        private void SavePinnedState()
+        {
+            _appSettings.PinnedAddresses.Clear();
+            _appSettings.PinnedAliases.Clear();
+            foreach (Control c in flowLayoutPanel1.Controls)
+            {
+                if (c is PingTile pt && pt.IsPinned)
+                {
+                    _appSettings.PinnedAddresses.Add(pt.Address);
+                    _appSettings.PinnedAliases.Add(pt.Alias ?? "");
+                }
+            }
+            AppSettings.Save(_appSettings);
+        }
+        // -------------------------
 
         // ... СТАНДАРТНЫЙ КОД ...
 

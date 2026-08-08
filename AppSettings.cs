@@ -24,6 +24,11 @@ namespace PingMonitor
         public int LastTemplateIndex { get; set; } = 0; // Чтобы помнить выбор
         // ------------------------------------------
 
+        // <--- ЗАКРЕПЛЁННЫЕ ПЛИТКИ (восстанавливаются после перезапуска) ---
+        public List<string> PinnedAddresses { get; set; } = new List<string>();
+        public List<string> PinnedAliases { get; set; } = new List<string>();
+        // ---------------------------------------------------------------
+
         public static void Save(AppSettings settings)
         {
             try

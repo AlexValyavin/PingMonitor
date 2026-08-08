@@ -46,8 +46,12 @@ namespace PingMonitor
         private Color _currentStatusColor = Color.LimeGreen;
 
         public event EventHandler RemoveRequested;
+        public event EventHandler<bool> PinStateChanged;
 
-        private Label lblAddress;
+        private bool _isPinned = false;
+        public bool IsPinned => _isPinned;
+
+        private Label btnPin;
         private Label lblPing;
         private Label lblStats;
         private Panel pnlStatusIndicator;
@@ -77,7 +81,7 @@ namespace PingMonitor
 
         private void AddMouseHandlers(Control c, MouseEventHandler down, MouseEventHandler move, MouseEventHandler up)
         {
-            if (c != btnClose && c != lblAddress) // lblAddress исключаем, у него своя логика DoubleClick, но drag тоже нужен
+            if (c != btnClose && c != btnPin && c != lblAddress) // lblAddress исключаем, у него своя логика DoubleClick, но drag тоже нужен
             {
                 c.MouseDown += down;
                 c.MouseMove += move;
@@ -129,6 +133,19 @@ namespace PingMonitor
         public void UpdateSettings(AppSettings newSettings)
         {
             _settings = newSettings;
+        }
+
+        public void SetPinned(bool pinned)
+        {
+            _isPinned = pinned;
+            btnPin.Text = _isPinned ? "\uE840" : "\uE718"; // E840=закреплено, E718=откреплено
+            btnPin.ForeColor = _isPinned ? Color.FromArgb(46, 204, 113) : Color.Gray;
+        }
+
+        private void TogglePin()
+        {
+            SetPinned(!_isPinned);
+            PinStateChanged?.Invoke(this, _isPinned);
         }
 
         private void AddToLog(string message)
@@ -194,6 +211,24 @@ namespace PingMonitor
             btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
             this.Controls.Add(btnClose);
             btnClose.BringToFront();
+
+            // --- КНОПКА ЗАКРЕПЛЕНИЯ ---
+            btnPin = new Label
+            {
+                Text = "\uE718", // Segoe MDL2: откреплено
+                Font = new Font("Segoe MDL2 Assets", 10),
+                ForeColor = Color.Gray,
+                BackColor = Color.Transparent,
+                AutoSize = true,
+                Cursor = Cursors.Hand,
+                Location = new Point(this.Width - 50, 10)
+            };
+            btnPin.Click += (s, e) => TogglePin();
+            btnPin.MouseEnter += (s, e) => btnPin.ForeColor = Color.White;
+            btnPin.MouseLeave += (s, e) => btnPin.ForeColor = _isPinned ? Color.FromArgb(46, 204, 113) : Color.Gray;
+            this.Controls.Add(btnPin);
+            btnPin.BringToFront();
+            // -------------------------
 
             lblAddress = new Label { ForeColor = ColorTextMain, BackColor = Color.Transparent, AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 0) };
 
