@@ -254,6 +254,8 @@ namespace PingMonitor
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold)
             };
             lblAddress.DoubleClick += (s, e) => EditName();
+            ToolTip tip = new ToolTip { AutoPopDelay = 5000, InitialDelay = 400, ReshowDelay = 100, ShowAlways = true };
+            tip.SetToolTip(lblAddress, string.IsNullOrEmpty(_alias) ? _address : _alias + " (" + _address + ")");
             this.Controls.Add(lblAddress);
 
             // --- Кнопка закрепления ---

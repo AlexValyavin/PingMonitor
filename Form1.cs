@@ -15,6 +15,7 @@ namespace PingMonitor
         private static readonly Color IconColor = Theme.Icon;
 
         private TextBox textBoxName;
+        private TextBox txtSearch;
         private ComboBox comboTemplates;
         private Label lblPrefix;
         private Label lblSuffix;
@@ -81,6 +82,7 @@ namespace PingMonitor
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = SystemIcons.Application;
             this.Padding = new Padding(1);
+            this.MinimumSize = new Size(MinWindowWidth, 150);
 
             panel1.Height = 62;
             panel1.BackColor = Theme.BgHeader;
@@ -101,12 +103,13 @@ namespace PingMonitor
             header.MouseDown += DragWindow;
 
             // Колонки: режим | IP/ID | имя | добавить | пусто | иконки
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+            // Процентные колонки — адаптируются при ресайзе окна
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));   // Режим/Шаблон
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));     // IP / ID
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));     // Имя
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));    // Добавить
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));     // spacer
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));   // иконки
 
             header.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
             header.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -179,6 +182,21 @@ namespace PingMonitor
             buttonAdd.FlatAppearance.BorderSize = 0;
             buttonAdd.Cursor = Cursors.Hand;
             header.Controls.Add(buttonAdd, 3, 1);
+
+            // --- Col 4: строка поиска (spacer) ---
+            Label lblSearchHint = new Label { Text = "🔍", ForeColor = Theme.TextHint, AutoSize = true, Font = fontHints, Margin = new Padding(0), TextAlign = ContentAlignment.MiddleLeft };
+            lblSearchHint.MouseDown += DragWindow;
+            header.Controls.Add(lblSearchHint, 4, 0);
+
+            Panel pnlSearch = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 2, 8, 2), BackColor = Color.Transparent };
+            pnlSearch.MouseDown += DragWindow;
+            Label lblSearchIcon = new Label { Text = "🔍", ForeColor = Theme.TextDim, Dock = DockStyle.Left, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(0, 0, 4, 0) };
+            txtSearch = new TextBox { Font = fontInputs, Dock = DockStyle.Fill, BackColor = Theme.BgInput, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle };
+            txtSearch.TextChanged += TxtSearch_TextChanged;
+            // Dock order: fill first, left second
+            pnlSearch.Controls.Add(txtSearch);
+            pnlSearch.Controls.Add(lblSearchIcon);
+            header.Controls.Add(pnlSearch, 4, 1);
 
             // --- Col 5: иконки (справа, справа-налево) ---
             FlowLayoutPanel fpnlIcons = new FlowLayoutPanel();
@@ -425,6 +443,21 @@ namespace PingMonitor
                 if (string.IsNullOrEmpty(finalAlias)) finalAlias = rawInput;
             }
             AddTile(finalAddress, finalAlias);
+        }
+
+        private void TxtSearch_TextChanged(object sender, EventArgs e)
+        {
+            string query = txtSearch.Text.Trim().ToLower();
+            foreach (Control c in flowLayoutPanel1.Controls)
+            {
+                if (c is PingTile pt)
+                {
+                    bool match = string.IsNullOrEmpty(query) ||
+                        pt.Address.ToLower().Contains(query) ||
+                        (pt.Alias ?? "").ToLower().Contains(query);
+                    if (pt.Visible != match) pt.Visible = match;
+                }
+            }
         }
 
         private void AdjustWindowSize()

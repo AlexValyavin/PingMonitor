@@ -32,6 +32,7 @@ namespace PingMonitor
 
         // <--- ТЕМА ---
         public bool IsDarkTheme { get; set; } = true;
+        public bool AutoStart { get; set; } = false;
         // ------------
 
         // <--- НАСТРОЙКИ ИНТЕРВАЛОВ ---

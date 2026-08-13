@@ -23,6 +23,7 @@ namespace PingMonitor
         private DarkNumeric numPingThreshold; // <--- Используем наш класс
 
         private DarkComboBox cmbTheme;
+        private CheckBox chkAutoStart;
         private DarkNumeric numPingInterval;
         private DarkNumeric numGraphWindow;
         private DarkNumeric numStatsWindow;
@@ -125,10 +126,12 @@ namespace PingMonitor
             TabPage tabAlerts = new TabPage("Оповещения") { BackColor = Theme.BgWindow, AutoScroll = true };
             TabPage tabTemplates = new TabPage("Шаблоны IP") { BackColor = Theme.BgWindow, AutoScroll = true };
             TabPage tabIntervals = new TabPage("Интервалы") { BackColor = Theme.BgWindow, AutoScroll = true };
+            TabPage tabSystem = new TabPage("Система") { BackColor = Theme.BgWindow, AutoScroll = true };
 
             tabControl.TabPages.Add(tabAlerts);
             tabControl.TabPages.Add(tabTemplates);
             tabControl.TabPages.Add(tabIntervals);
+            tabControl.TabPages.Add(tabSystem);
             this.Controls.Add(tabControl);
             tabControl.BringToFront();
 
@@ -244,6 +247,13 @@ namespace PingMonitor
             numStatsWindow = new DarkNumeric { Location = new Point(15, 55), Width = 100, Minimum = 30, Maximum = 3600, Increment = 30 };
             grpStats.Controls.Add(numStatsWindow);
             grpStats.Controls.Add(new Label { Text = "сек", ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
+
+            // === Tab 4: Система ===
+            DarkGroupBox grpSystem = CreateGroup("⚙ Общее", 10, tabSystem);
+            grpSystem.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grpSystem.Width = tabSystem.Width - 20;
+            chkAutoStart = new CheckBox { Text = "Автозапуск при старте Windows", ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
+            grpSystem.Controls.Add(chkAutoStart);
         }
 
         private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
@@ -300,6 +310,7 @@ namespace PingMonitor
             numPingThreshold.Value = Settings.HighPingThreshold;
             SetComboValue(cmbPingSound, Settings.HighPingSoundFile);
             cmbTheme.SelectedIndex = Settings.IsDarkTheme ? 0 : 1;
+            chkAutoStart.Checked = Settings.AutoStart;
             numPingInterval.Value = Settings.PingIntervalMs;
             numGraphWindow.Value = Settings.GraphWindowSec;
             numStatsWindow.Value = Settings.StatsWindowSec;
@@ -317,6 +328,7 @@ namespace PingMonitor
         public void ApplySettings()
         {
             Settings.LossAlertEnabled = chkLossEnable.Checked;
+            SetAutoStart(chkAutoStart.Checked);
             Settings.LossSoundFile = Path.Combine(@"C:\Windows\Media", cmbLossSound.SelectedItem?.ToString() ?? "");
             Settings.LossVolume = trackLossVol.Value;
             Settings.HighPingAlertEnabled = chkPingEnable.Checked;
@@ -330,6 +342,22 @@ namespace PingMonitor
             Settings.IpTemplates.Clear();
             foreach (var item in lstTemplates.Items) Settings.IpTemplates.Add(item.ToString());
             AppSettings.Save(Settings);
+        }
+
+        private void SetAutoStart(bool enable)
+        {
+            try
+            {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run", true))
+                {
+                    if (enable)
+                        key?.SetValue("PingMonitor", Application.ExecutablePath);
+                    else
+                        key?.DeleteValue("PingMonitor", false);
+                }
+            }
+            catch { }
         }
     }
 }
