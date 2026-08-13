@@ -27,29 +27,72 @@ namespace PingMonitor
         // <--- ЗАКРЕПЛЁННЫЕ ПЛИТКИ (восстанавливаются после перезапуска) ---
         public List<string> PinnedAddresses { get; set; } = new List<string>();
         public List<string> PinnedAliases { get; set; } = new List<string>();
+        public List<int> PinnedStatsPeriods { get; set; } = new List<int>();
         // ---------------------------------------------------------------
+
+        // <--- ТЕМА ---
+        public bool IsDarkTheme { get; set; } = true;
+        // ------------
+
+        // <--- НАСТРОЙКИ ИНТЕРВАЛОВ ---
+        public int PingIntervalMs { get; set; } = 1000;       // 200–60000 мс
+        public int GraphWindowSec { get; set; } = 50;          // 10–600 сек (окно графика)
+        public int StatsWindowSec { get; set; } = 600;         // 30–3600 сек (окно статистики Loss%)
+        // -----------------------------
+
+        // Путь к файлу настроек в %APPDATA%
+        private static string SettingsPath =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PingMonitor", "settings.xml");
+
+        private static string LegacySettingsPath => "settings.xml"; // Старый путь рядом с exe
 
         public static void Save(AppSettings settings)
         {
             try
             {
+                string dir = Path.GetDirectoryName(SettingsPath);
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
                 XmlSerializer serializer = new XmlSerializer(typeof(AppSettings));
-                using (TextWriter writer = new StreamWriter("settings.xml")) serializer.Serialize(writer, settings);
+                using (TextWriter writer = new StreamWriter(SettingsPath, false, new System.Text.UTF8Encoding(false)))
+                    serializer.Serialize(writer, settings);
             }
-            catch { }
+            catch { /* Логирование можно добавить позже */ }
         }
 
         public static AppSettings Load()
         {
-            try
+            // 1. Пробуем новый путь (%APPDATA%)
+            if (File.Exists(SettingsPath))
             {
-                if (File.Exists("settings.xml"))
+                try
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof(AppSettings));
-                    using (TextReader reader = new StreamReader("settings.xml")) return (AppSettings)serializer.Deserialize(reader);
+                    using (TextReader reader = new StreamReader(SettingsPath, new System.Text.UTF8Encoding(false)))
+                        return (AppSettings)serializer.Deserialize(reader);
                 }
+                catch { }
             }
-            catch { }
+
+            // 2. Миграция со старого пути (рядом с exe)
+            if (File.Exists(LegacySettingsPath))
+            {
+                try
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(AppSettings));
+                    using (TextReader reader = new StreamReader(LegacySettingsPath))
+                    {
+                        var settings = (AppSettings)serializer.Deserialize(reader);
+                        // Сохраняем в новое место
+                        Save(settings);
+                        // Удаляем старый файл (опционально)
+                        try { File.Delete(LegacySettingsPath); } catch { }
+                        return settings;
+                    }
+                }
+                catch { }
+            }
+
             return new AppSettings();
         }
     }

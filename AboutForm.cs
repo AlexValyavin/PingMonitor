@@ -30,7 +30,7 @@ namespace PingMonitor
             this.FormBorderStyle = FormBorderStyle.None;
             this.Size = new Size(550, 700);
             this.StartPosition = FormStartPosition.CenterParent;
-            this.BackColor = Color.FromArgb(30, 30, 30);
+            this.BackColor = Theme.BgWindow;
             this.Padding = new Padding(1);
 
             // Получаем данные из Свойств проекта (которые ты заполнил)
@@ -45,7 +45,7 @@ namespace PingMonitor
             {
                 Text = "О программе",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Theme.Text,
                 Dock = DockStyle.Top,
                 Height = 40,
                 TextAlign = ContentAlignment.MiddleCenter
@@ -59,9 +59,9 @@ namespace PingMonitor
                 Text = "Закрыть",
                 Dock = DockStyle.Bottom,
                 Height = 40,
-                BackColor = Color.FromArgb(46, 204, 113),
+                BackColor = Theme.Ok,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.Black,
+                ForeColor = Theme.Text,
                 Cursor = Cursors.Hand
             };
             btnClose.FlatAppearance.BorderSize = 0;
@@ -70,11 +70,11 @@ namespace PingMonitor
 
             // Текстовое поле
             RichTextBox rtb = new RichTextBox();
-            rtb.BackColor = Color.FromArgb(30, 30, 30); // Такой же как фон окна
+            rtb.BackColor = Theme.BgWindow; // Такой же как фон окна
             rtb.BorderStyle = BorderStyle.None; // <--- УБРАТЬ РАМКУ ОБЯЗАТЕЛЬНО
             rtb.Dock = DockStyle.Fill;
-            //rtb.BackColor = Color.FromArgb(30, 30, 30);
-            rtb.ForeColor = Color.LightGray;
+            //rtb.BackColor = Theme.BgWindow;
+            rtb.ForeColor = Theme.TextDim;
             rtb.Font = new Font("Segoe UI", 9);
             //rtb.BorderStyle = BorderStyle.None;
             rtb.ReadOnly = true;

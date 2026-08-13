@@ -19,38 +19,47 @@ namespace PingMonitor
             textBox.Text = defaultValue;
 
             buttonOk.Text = "OK";
-            buttonCancel.Text = "Cancel";
+            buttonCancel.Text = "Отмена";
             buttonOk.DialogResult = DialogResult.OK;
             buttonCancel.DialogResult = DialogResult.Cancel;
 
-            // Стилизация под темную тему
-            form.BackColor = Color.FromArgb(45, 45, 48);
-            form.ForeColor = Color.White;
+            // Стилизация под тему
+            form.BackColor = Theme.BgWindow;
+            form.ForeColor = Theme.Text;
             form.FormBorderStyle = FormBorderStyle.FixedDialog;
             form.StartPosition = FormStartPosition.CenterParent;
             form.MaximizeBox = false;
             form.MinimizeBox = false;
-            form.ClientSize = new Size(350, 150);
+            form.ClientSize = new Size(380, 150);
 
-            label.SetBounds(15, 20, 320, 13);
+            label.SetBounds(20, 18, 340, 18);
             label.Font = new Font("Segoe UI", 10);
 
-            textBox.SetBounds(15, 50, 305, 20);
+            textBox.SetBounds(20, 44, 340, 24);
             textBox.Font = new Font("Segoe UI", 10);
+            textBox.BackColor = Theme.BgInput;
+            textBox.ForeColor = Theme.Text;
+            textBox.BorderStyle = BorderStyle.FixedSingle;
 
-            buttonOk.SetBounds(135, 90, 80, 30);
-            buttonCancel.SetBounds(225, 90, 80, 30);
+            buttonOk.SetBounds(180, 90, 85, 30);
+            buttonCancel.SetBounds(275, 90, 85, 30);
 
             // Кнопки
-            buttonOk.BackColor = Color.FromArgb(46, 204, 113);
-            buttonOk.ForeColor = Color.Black;
+            buttonOk.BackColor = Theme.Accent;
+            buttonOk.ForeColor = Theme.AccentText;
             buttonOk.FlatStyle = FlatStyle.Flat;
             buttonOk.FlatAppearance.BorderSize = 0;
+            buttonOk.Cursor = Cursors.Hand;
+            buttonOk.MouseEnter += (s, e) => buttonOk.BackColor = Theme.AccentHover;
+            buttonOk.MouseLeave += (s, e) => buttonOk.BackColor = Theme.Accent;
 
-            buttonCancel.BackColor = Color.FromArgb(60, 60, 60);
-            buttonCancel.ForeColor = Color.White;
+            buttonCancel.BackColor = Theme.BgInput;
+            buttonCancel.ForeColor = Theme.Text;
             buttonCancel.FlatStyle = FlatStyle.Flat;
             buttonCancel.FlatAppearance.BorderSize = 0;
+            buttonCancel.Cursor = Cursors.Hand;
+            buttonCancel.MouseEnter += (s, e) => buttonCancel.BackColor = Theme.BgHover;
+            buttonCancel.MouseLeave += (s, e) => buttonCancel.BackColor = Theme.BgInput;
 
             form.Controls.AddRange(new Control[] { label, textBox, buttonOk, buttonCancel });
             form.AcceptButton = buttonOk;

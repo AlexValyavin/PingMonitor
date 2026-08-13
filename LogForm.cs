@@ -41,7 +41,7 @@ namespace PingMonitor
             txtLog.Dock = DockStyle.Top;
             txtLog.Height = 310;
             txtLog.Font = new Font("Consolas", 9); // Моноширинный шрифт для красоты
-            txtLog.BackColor = Color.White;
+            txtLog.BackColor = Theme.Text;
 
             // Кнопка Сохранить
             btnSave = new Button();

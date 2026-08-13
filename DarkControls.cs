@@ -13,8 +13,8 @@ namespace PingMonitor
             DrawMode = DrawMode.OwnerDrawFixed;
             DropDownStyle = ComboBoxStyle.DropDownList;
             FlatStyle = FlatStyle.Flat;
-            BackColor = Color.FromArgb(60, 60, 60);
-            ForeColor = Color.White;
+            BackColor = Theme.BgInput;
+            ForeColor = Theme.Text;
             Font = new Font("Segoe UI", 10);
         }
 
@@ -22,12 +22,12 @@ namespace PingMonitor
         {
             if (e.Index < 0) return;
             if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
-                e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(0, 122, 204)), e.Bounds);
+                e.Graphics.FillRectangle(new SolidBrush(Theme.Accent), e.Bounds);
             else
-                e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), e.Bounds);
+                e.Graphics.FillRectangle(new SolidBrush(Theme.BgInput), e.Bounds);
 
             TextRenderer.DrawText(e.Graphics, Items[e.Index].ToString(), Font,
-                new Point(e.Bounds.X + 2, e.Bounds.Y + 2), Color.White);
+                new Point(e.Bounds.X + 2, e.Bounds.Y + 2), Theme.Text);
         }
     }
 
@@ -36,7 +36,7 @@ namespace PingMonitor
     {
         public DarkGroupBox()
         {
-            ForeColor = Color.White;
+            ForeColor = Theme.Text;
             BackColor = Color.Transparent;
             Font = new Font("Segoe UI", 10, FontStyle.Bold);
         }
@@ -48,10 +48,10 @@ namespace PingMonitor
             borderRect.Y += (int)tSize.Height / 2;
             borderRect.Height -= (int)tSize.Height / 2;
 
-            ControlPaint.DrawBorder(e.Graphics, borderRect, Color.FromArgb(100, 100, 100), ButtonBorderStyle.Solid);
+            ControlPaint.DrawBorder(e.Graphics, borderRect, Theme.Border, ButtonBorderStyle.Solid);
 
             Rectangle textRect = new Rectangle(6, 0, (int)tSize.Width + 4, (int)tSize.Height);
-            e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), textRect);
+            e.Graphics.FillRectangle(new SolidBrush(Theme.BgWindow), textRect);
             e.Graphics.DrawString(Text, Font, new SolidBrush(ForeColor), 6, 0);
         }
     }
@@ -73,7 +73,7 @@ namespace PingMonitor
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
             Height = 25; // Чуть выше
             Cursor = Cursors.Hand;
-            BackColor = Color.FromArgb(30, 30, 30); // <--- ВАЖНО: Цвет фона как у окна
+            BackColor = Theme.BgWindow; // <--- ВАЖНО: Цвет фона как у окна
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -87,7 +87,7 @@ namespace PingMonitor
             int trackY = this.Height / 2;
 
             // Серый трек (фон линии)
-            using (Pen pen = new Pen(Color.FromArgb(60, 60, 60), 4))
+            using (Pen pen = new Pen(Theme.BgInput, 4))
             {
                 pen.StartCap = LineCap.Round; pen.EndCap = LineCap.Round;
                 g.DrawLine(pen, 10, trackY, this.Width - 10, trackY);
@@ -97,7 +97,7 @@ namespace PingMonitor
             float percent = (float)(Value - Minimum) / (Maximum - Minimum);
             int thumbX = (int)(10 + percent * (this.Width - 20));
 
-            using (Pen pen = new Pen(Color.FromArgb(0, 122, 204), 4))
+            using (Pen pen = new Pen(Theme.Accent, 4))
             {
                 pen.StartCap = LineCap.Round; pen.EndCap = LineCap.Round;
                 g.DrawLine(pen, 10, trackY, thumbX, trackY);
@@ -124,8 +124,8 @@ namespace PingMonitor
     {
         public DarkNumeric()
         {
-            BackColor = Color.FromArgb(60, 60, 60);
-            ForeColor = Color.White;
+            BackColor = Theme.BgInput;
+            ForeColor = Theme.Text;
             BorderStyle = BorderStyle.FixedSingle;
         }
         // NumericUpDown сложный контрол, но установка BackColor в конструкторе обычно помогает для текстовой части
