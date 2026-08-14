@@ -82,7 +82,7 @@ namespace PingMonitor
             this.Text = Lang.Get("title");
             this.BackColor = Theme.BgWindow;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = SystemIcons.Application;
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
             this.Padding = new Padding(1);
             this.MinimumSize = new Size(MinWindowWidth, 150);
 
