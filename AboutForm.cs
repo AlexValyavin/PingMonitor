@@ -43,7 +43,7 @@ namespace PingMonitor
             // Заголовок окна
             Label lblTitleWindow = new Label
             {
-                Text = "О программе",
+                Text = Lang.Get("about_title"),
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Theme.Text,
                 Dock = DockStyle.Top,
@@ -56,7 +56,7 @@ namespace PingMonitor
             // Кнопка Закрыть
             Button btnClose = new Button
             {
-                Text = "Закрыть",
+                Text = Lang.Get("about_close"),
                 Dock = DockStyle.Bottom,
                 Height = 40,
                 BackColor = Theme.Ok,

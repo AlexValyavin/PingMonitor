@@ -24,6 +24,7 @@ namespace PingMonitor
 
         private DarkComboBox cmbTheme;
         private CheckBox chkAutoStart;
+        private DarkComboBox cmbLang;
         private DarkNumeric numPingInterval;
         private DarkNumeric numGraphWindow;
         private DarkNumeric numStatsWindow;
@@ -79,7 +80,7 @@ namespace PingMonitor
 
             // Header (с кнопкой закрытия)
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = Theme.BgHeader };
-            Label lblTitle = new Label { Text = "Настройки", Font = new Font("Segoe UI", 13, FontStyle.Bold), ForeColor = Theme.Text, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+            Label lblTitle = new Label { Text = Lang.Get("settings_title"), Font = new Font("Segoe UI", 13, FontStyle.Bold), ForeColor = Theme.Text, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
             lblTitle.MouseDown += DragWindow;
             pnlHeader.Controls.Add(lblTitle);
 
@@ -92,12 +93,12 @@ namespace PingMonitor
 
             // Buttons (белый текст, hover-эффекты)
             Panel pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = Theme.BgHeader };
-            Button btnSave = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, BackColor = Theme.Accent, FlatStyle = FlatStyle.Flat, ForeColor = Theme.AccentText, Size = new Size(120, 35), Cursor = Cursors.Hand };
+            Button btnSave = new Button { Text = Lang.Get("save"), DialogResult = DialogResult.OK, BackColor = Theme.Accent, FlatStyle = FlatStyle.Flat, ForeColor = Theme.AccentText, Size = new Size(120, 35), Cursor = Cursors.Hand };
             btnSave.Location = new Point(pnlBottom.Width - 260, 13); btnSave.Anchor = AnchorStyles.Bottom | AnchorStyles.Right; btnSave.FlatAppearance.BorderSize = 0;
             btnSave.MouseEnter += (s, e) => btnSave.BackColor = Theme.AccentHover;
             btnSave.MouseLeave += (s, e) => btnSave.BackColor = Theme.Accent;
 
-            Button btnCancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text, Size = new Size(120, 35), Cursor = Cursors.Hand };
+            Button btnCancel = new Button { Text = Lang.Get("cancel"), DialogResult = DialogResult.Cancel, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text, Size = new Size(120, 35), Cursor = Cursors.Hand };
             btnCancel.Location = new Point(pnlBottom.Width - 130, 13); btnCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right; btnCancel.FlatAppearance.BorderSize = 0;
             btnCancel.MouseEnter += (s, e) => btnCancel.BackColor = Theme.BgHover;
             btnCancel.MouseLeave += (s, e) => btnCancel.BackColor = Theme.BgInput;
@@ -106,12 +107,12 @@ namespace PingMonitor
 
             // Тема (полоса под заголовком)
             Panel pnlTheme = new Panel { Dock = DockStyle.Top, Height = 44, BackColor = Theme.BgHeader };
-            Label lblThemeHint = new Label { Text = "Тема оформления:", ForeColor = Theme.TextDim, Location = new Point(20, 13), AutoSize = true };
+            Label lblThemeHint = new Label { Text = Lang.Get("theme_label"), ForeColor = Theme.TextDim, Location = new Point(20, 13), AutoSize = true };
             pnlTheme.Controls.Add(lblThemeHint);
 
             cmbTheme = new DarkComboBox { Location = new Point(150, 8), Width = 150 };
-            cmbTheme.Items.Add("Тёмная");
-            cmbTheme.Items.Add("Светлая");
+            cmbTheme.Items.Add(Lang.Get("theme_dark"));
+            cmbTheme.Items.Add(Lang.Get("theme_light"));
             pnlTheme.Controls.Add(cmbTheme);
             this.Controls.Add(pnlTheme);
 
@@ -123,10 +124,10 @@ namespace PingMonitor
             tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl.DrawItem += TabControl_DrawItem;
 
-            TabPage tabAlerts = new TabPage("Оповещения") { BackColor = Theme.BgWindow, AutoScroll = true };
-            TabPage tabTemplates = new TabPage("Шаблоны IP") { BackColor = Theme.BgWindow, AutoScroll = true };
-            TabPage tabIntervals = new TabPage("Интервалы") { BackColor = Theme.BgWindow, AutoScroll = true };
-            TabPage tabSystem = new TabPage("Система") { BackColor = Theme.BgWindow, AutoScroll = true };
+            TabPage tabAlerts = new TabPage(Lang.Get("tab_alerts")) { BackColor = Theme.BgWindow, AutoScroll = true };
+            TabPage tabTemplates = new TabPage(Lang.Get("tab_templates")) { BackColor = Theme.BgWindow, AutoScroll = true };
+            TabPage tabIntervals = new TabPage(Lang.Get("tab_intervals")) { BackColor = Theme.BgWindow, AutoScroll = true };
+            TabPage tabSystem = new TabPage(Lang.Get("tab_system")) { BackColor = Theme.BgWindow, AutoScroll = true };
 
             tabControl.TabPages.Add(tabAlerts);
             tabControl.TabPages.Add(tabTemplates);
@@ -136,13 +137,13 @@ namespace PingMonitor
             tabControl.BringToFront();
 
             // === Tab 1 ===
-            DarkGroupBox grpLoss = CreateGroup("🔴 При потере связи", 10, tabAlerts);
+            DarkGroupBox grpLoss = CreateGroup(Lang.Get("loss_alert"), 10, tabAlerts);
             grpLoss.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpLoss.Width = tabAlerts.Width - 20;
 
-            chkLossEnable = new CheckBox { Text = "Включить звук", ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
+            chkLossEnable = new CheckBox { Text = Lang.Get("enable_sound"), ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
             grpLoss.Controls.Add(chkLossEnable);
 
-            grpLoss.Controls.Add(new Label { Text = "Звук:", ForeColor = Theme.TextDim, Location = new Point(15, 60), AutoSize = true });
+            grpLoss.Controls.Add(new Label { Text = Lang.Get("sound"), ForeColor = Theme.TextDim, Location = new Point(15, 60), AutoSize = true });
 
             cmbLossSound = CreateSoundCombo(15, 80);
             cmbLossSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -154,7 +155,7 @@ namespace PingMonitor
             btnTest1.Location = new Point(grpLoss.Width - 90, 79);
             grpLoss.Controls.Add(btnTest1);
 
-            grpLoss.Controls.Add(new Label { Text = "Громкость:", ForeColor = Theme.TextDim, Location = new Point(15, 115), AutoSize = true });
+            grpLoss.Controls.Add(new Label { Text = Lang.Get("volume"), ForeColor = Theme.TextDim, Location = new Point(15, 115), AutoSize = true });
 
             trackLossVol = new DarkTrackBar { Location = new Point(15, 135), Height = 30 };
             trackLossVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -162,19 +163,19 @@ namespace PingMonitor
             grpLoss.Controls.Add(trackLossVol);
 
 
-            DarkGroupBox grpPing = CreateGroup("🟡 При высоком пинге", 210, tabAlerts);
+            DarkGroupBox grpPing = CreateGroup(Lang.Get("high_ping"), 210, tabAlerts);
             grpPing.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; grpPing.Width = tabAlerts.Width - 20;
 
-            chkPingEnable = new CheckBox { Text = "Включить звук", ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
+            chkPingEnable = new CheckBox { Text = Lang.Get("enable_sound"), ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
             grpPing.Controls.Add(chkPingEnable);
 
-            grpPing.Controls.Add(new Label { Text = "Порог (мс):", ForeColor = Theme.TextDim, Location = new Point(150, 31), AutoSize = true });
+            grpPing.Controls.Add(new Label { Text = Lang.Get("threshold_ms"), ForeColor = Theme.TextDim, Location = new Point(150, 31), AutoSize = true });
 
             // Используем DarkNumeric
             numPingThreshold = new DarkNumeric { Location = new Point(240, 29), Width = 70, Minimum = 10, Maximum = 5000 };
             grpPing.Controls.Add(numPingThreshold);
 
-            grpPing.Controls.Add(new Label { Text = "Звук:", ForeColor = Theme.TextDim, Location = new Point(15, 60), AutoSize = true });
+            grpPing.Controls.Add(new Label { Text = Lang.Get("sound"), ForeColor = Theme.TextDim, Location = new Point(15, 60), AutoSize = true });
 
             cmbPingSound = CreateSoundCombo(15, 80);
             cmbPingSound.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -186,7 +187,7 @@ namespace PingMonitor
             btnTest2.Location = new Point(grpPing.Width - 90, 79);
             grpPing.Controls.Add(btnTest2);
 
-            grpPing.Controls.Add(new Label { Text = "Громкость:", ForeColor = Theme.TextDim, Location = new Point(15, 115), AutoSize = true });
+            grpPing.Controls.Add(new Label { Text = Lang.Get("volume"), ForeColor = Theme.TextDim, Location = new Point(15, 115), AutoSize = true });
 
             trackPingVol = new DarkTrackBar { Location = new Point(15, 135), Height = 30 };
             trackPingVol.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -195,13 +196,13 @@ namespace PingMonitor
 
 
             // === Tab 2 ===
-            Label lblHint = new Label { Text = "Создайте маски. Символ '*' заменяет курсор.\nПримеры: 192.168.1.*  или  *.google.com", ForeColor = Theme.TextDim, AutoSize = true, Location = new Point(20, 20) };
+            Label lblHint = new Label { Text = Lang.IsRu ? Lang.Get("template_hint") : Lang.Get("template_hint_en"), ForeColor = Theme.TextDim, AutoSize = true, Location = new Point(20, 20) };
             tabTemplates.Controls.Add(lblHint);
 
-            Label lblNew = new Label { Text = "Новый шаблон:", ForeColor = Theme.Text, AutoSize = true, Location = new Point(20, 70) };
+            Label lblNew = new Label { Text = Lang.Get("new_template"), ForeColor = Theme.Text, AutoSize = true, Location = new Point(20, 70) };
             tabTemplates.Controls.Add(lblNew);
 
-            btnAddTemplate = new Button { Text = "Добавить", Width = 100, Height = 27, BackColor = Theme.Accent, FlatStyle = FlatStyle.Flat, ForeColor = Theme.AccentText, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            btnAddTemplate = new Button { Text = Lang.Get("add_template"), Width = 100, Height = 27, BackColor = Theme.Accent, FlatStyle = FlatStyle.Flat, ForeColor = Theme.AccentText, Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
             btnAddTemplate.Location = new Point(tabTemplates.Width - 130, 94);
             btnAddTemplate.Click += BtnAddTemplate_Click;
             tabTemplates.Controls.Add(btnAddTemplate);
@@ -215,7 +216,7 @@ namespace PingMonitor
             lstTemplates.Height = tabTemplates.Height - 190;
             tabTemplates.Controls.Add(lstTemplates);
 
-            btnDelTemplate = new Button { Text = "Удалить выбранный", Height = 35, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text, Cursor = Cursors.Hand, Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
+            btnDelTemplate = new Button { Text = Lang.Get("delete_selected"), Height = 35, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text, Cursor = Cursors.Hand, Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
             btnDelTemplate.Location = new Point(20, tabTemplates.Height - 55);
             btnDelTemplate.Width = tabTemplates.Width - 40;
             btnDelTemplate.Click += (s, e) => {
@@ -224,37 +225,45 @@ namespace PingMonitor
             tabTemplates.Controls.Add(btnDelTemplate);
 
             // === Tab 3: Интервалы ===
-            DarkGroupBox grpPingInterval = CreateGroup("⏱ Период пинга", 10, tabIntervals);
+            DarkGroupBox grpPingInterval = CreateGroup(Lang.Get("ping_period"), 10, tabIntervals);
             grpPingInterval.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpPingInterval.Width = tabIntervals.Width - 20;
-            grpPingInterval.Controls.Add(new Label { Text = "Как часто пинговать узел", ForeColor = Theme.TextDim, Location = new Point(15, 30), AutoSize = true });
+            grpPingInterval.Controls.Add(new Label { Text = Lang.Get("ping_period_hint"), ForeColor = Theme.TextDim, Location = new Point(15, 30), AutoSize = true });
             numPingInterval = new DarkNumeric { Location = new Point(15, 55), Width = 100, Minimum = 200, Maximum = 60000, Increment = 100 };
             grpPingInterval.Controls.Add(numPingInterval);
-            grpPingInterval.Controls.Add(new Label { Text = "мс", ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
+            grpPingInterval.Controls.Add(new Label { Text = Lang.Get("ms_label"), ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
 
-            DarkGroupBox grpGraph = CreateGroup("📊 Окно графика", 220, tabIntervals);
+            DarkGroupBox grpGraph = CreateGroup(Lang.Get("graph_window"), 220, tabIntervals);
             grpGraph.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpGraph.Width = tabIntervals.Width - 20;
-            grpGraph.Controls.Add(new Label { Text = "Сколько секунд истории показывать на графике", ForeColor = Theme.TextDim, Location = new Point(15, 30), AutoSize = true });
+            grpGraph.Controls.Add(new Label { Text = Lang.Get("graph_window_hint"), ForeColor = Theme.TextDim, Location = new Point(15, 30), AutoSize = true });
             numGraphWindow = new DarkNumeric { Location = new Point(15, 55), Width = 100, Minimum = 10, Maximum = 600, Increment = 10 };
             grpGraph.Controls.Add(numGraphWindow);
-            grpGraph.Controls.Add(new Label { Text = "сек", ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
+            grpGraph.Controls.Add(new Label { Text = Lang.Get("sec_label"), ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
 
-            DarkGroupBox grpStats = CreateGroup("📈 Окно статистики", 430, tabIntervals);
+            DarkGroupBox grpStats = CreateGroup(Lang.Get("stats_window"), 430, tabIntervals);
             grpStats.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpStats.Width = tabIntervals.Width - 20;
             grpStats.Controls.Add(new Label { Text = "Период для расчёта Loss% и отчётов", ForeColor = Theme.TextDim, Location = new Point(15, 30), AutoSize = true });
             numStatsWindow = new DarkNumeric { Location = new Point(15, 55), Width = 100, Minimum = 30, Maximum = 3600, Increment = 30 };
             grpStats.Controls.Add(numStatsWindow);
-            grpStats.Controls.Add(new Label { Text = "сек", ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
+            grpStats.Controls.Add(new Label { Text = Lang.Get("sec_label"), ForeColor = Theme.TextDim, Location = new Point(120, 58), AutoSize = true });
 
             // === Tab 4: Система ===
-            DarkGroupBox grpSystem = CreateGroup("⚙ Общее", 10, tabSystem);
+            DarkGroupBox grpSystem = CreateGroup(Lang.Get("system_group"), 10, tabSystem);
             grpSystem.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpSystem.Width = tabSystem.Width - 20;
-            chkAutoStart = new CheckBox { Text = "Автозапуск при старте Windows", ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
+            chkAutoStart = new CheckBox { Text = Lang.Get("autostart"), ForeColor = Theme.Text, Location = new Point(15, 30), AutoSize = true };
             grpSystem.Controls.Add(chkAutoStart);
-        }
+
+                        // Язык
+                        Label lblLang = new Label { Text = Lang.Get("lang_label"), ForeColor = Theme.TextDim, Location = new Point(15, 70), AutoSize = true };
+                        grpSystem.Controls.Add(lblLang);
+                        cmbLang = new DarkComboBox { Location = new Point(15, 92), Width = 180 };
+                        cmbLang.Items.Add(Lang.Get("lang_ru"));
+                        cmbLang.Items.Add(Lang.Get("lang_en"));
+                        grpSystem.Controls.Add(cmbLang);
+                    }
 
         private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
@@ -275,7 +284,7 @@ namespace PingMonitor
         {
             string tmpl = txtNewTemplate.Text.Trim();
             if (string.IsNullOrWhiteSpace(tmpl)) return;
-            if (!tmpl.Contains("*")) { MessageBox.Show("Шаблон должен содержать '*'"); return; }
+            if (!tmpl.Contains("*")) { MessageBox.Show(Lang.IsRu ? Lang.Get("template_needs_star") : Lang.Get("template_needs_star_en")); return; }
             if (!lstTemplates.Items.Contains(tmpl)) lstTemplates.Items.Add(tmpl);
             txtNewTemplate.Clear();
         }
@@ -295,7 +304,7 @@ namespace PingMonitor
         // КНОПКА PLAY: Увеличили высоту с 23 до 27
         private Button CreateTestButton(DarkComboBox cb, Func<int> getVol)
         {
-            Button b = new Button { Text = "Play", Width = 50, Height = 27, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text };
+            Button b = new Button { Text = Lang.Get("play"), Width = 50, Height = 27, BackColor = Theme.BgInput, FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text };
             b.Click += (s, e) => AudioManager.PlaySound(Path.Combine(@"C:\Windows\Media", cb.SelectedItem?.ToString() ?? ""), getVol());
             return b;
         }
@@ -311,6 +320,7 @@ namespace PingMonitor
             SetComboValue(cmbPingSound, Settings.HighPingSoundFile);
             cmbTheme.SelectedIndex = Settings.IsDarkTheme ? 0 : 1;
             chkAutoStart.Checked = Settings.AutoStart;
+            cmbLang.SelectedIndex = Settings.IsRussian ? 0 : 1;
             numPingInterval.Value = Settings.PingIntervalMs;
             numGraphWindow.Value = Settings.GraphWindowSec;
             numStatsWindow.Value = Settings.StatsWindowSec;
@@ -336,6 +346,7 @@ namespace PingMonitor
             Settings.HighPingVolume = trackPingVol.Value;
             Settings.HighPingThreshold = (int)numPingThreshold.Value;
             Settings.IsDarkTheme = cmbTheme.SelectedIndex == 0;
+            Settings.IsRussian = cmbLang.SelectedIndex == 0;
             Settings.PingIntervalMs = (int)numPingInterval.Value;
             Settings.GraphWindowSec = (int)numGraphWindow.Value;
             Settings.StatsWindowSec = (int)numStatsWindow.Value;

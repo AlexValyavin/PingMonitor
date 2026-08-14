@@ -16,6 +16,7 @@ namespace PingMonitor
 
         private TextBox textBoxName;
         private TextBox txtSearch;
+        private Panel _searchBar;
         private ComboBox comboTemplates;
         private Label lblPrefix;
         private Label lblSuffix;
@@ -70,6 +71,7 @@ namespace PingMonitor
 
             // Tile area
             if (flowLayoutPanel1 != null) flowLayoutPanel1.BackColor = Theme.BgWindow;
+            if (_searchBar != null) _searchBar.BackColor = Theme.BgHeader;
             foreach (Control c in flowLayoutPanel1.Controls)
                 if (c is PingTile pt) pt.UpdateSettings(_appSettings);
         }
@@ -77,7 +79,7 @@ namespace PingMonitor
         private void SetupFormDesign()
         {
             this.FormBorderStyle = FormBorderStyle.None;
-            this.Text = "NetMonitor Pro";
+            this.Text = Lang.Get("title");
             this.BackColor = Theme.BgWindow;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = SystemIcons.Application;
@@ -109,13 +111,13 @@ namespace PingMonitor
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));     // Имя
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));    // Добавить
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));     // spacer
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));   // иконки
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));   // иконки
 
             header.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
             header.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // --- Col 0: Режим / Шаблон ---
-            Label lblMode = new Label { Text = "Режим / Шаблон", ForeColor = Theme.TextHint,
+            Label lblMode = new Label { Text = Lang.Get("mode"), ForeColor = Theme.TextHint,
                 AutoSize = true, Font = fontHints, Margin = new Padding(0) };
             lblMode.MouseDown += DragWindow;
             header.Controls.Add(lblMode, 0, 0);
@@ -126,7 +128,7 @@ namespace PingMonitor
             header.Controls.Add(comboTemplates, 0, 1);
 
             // --- Col 1: IP / ID (prefix | input | suffix) ---
-            Label lblIpHint = new Label { Text = "IP / ID", ForeColor = Theme.TextHint,
+            Label lblIpHint = new Label { Text = Lang.Get("ip_hint"), ForeColor = Theme.TextHint,
                 AutoSize = true, Font = fontHints, Margin = new Padding(0) };
             lblIpHint.MouseDown += DragWindow;
             header.Controls.Add(lblIpHint, 1, 0);
@@ -159,7 +161,7 @@ namespace PingMonitor
             header.Controls.Add(pnlIP, 1, 1);
 
             // --- Col 2: Имя (Опц.) ---
-            Label lblNameHint = new Label { Text = "Имя (Опц.)", ForeColor = Theme.TextHint,
+            Label lblNameHint = new Label { Text = Lang.Get("name_hint"), ForeColor = Theme.TextHint,
                 AutoSize = true, Font = fontHints, Margin = new Padding(0) };
             lblNameHint.MouseDown += DragWindow;
             header.Controls.Add(lblNameHint, 2, 0);
@@ -172,7 +174,7 @@ namespace PingMonitor
             header.Controls.Add(textBoxName, 2, 1);
 
             // --- Col 3: Добавить ---
-            buttonAdd.Text = "Добавить";
+            buttonAdd.Text = Lang.Get("add");
             buttonAdd.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             buttonAdd.Dock = DockStyle.Fill;
             buttonAdd.Margin = new Padding(0, 2, 0, 2);
@@ -183,20 +185,14 @@ namespace PingMonitor
             buttonAdd.Cursor = Cursors.Hand;
             header.Controls.Add(buttonAdd, 3, 1);
 
-            // --- Col 4: строка поиска (spacer) ---
-            Label lblSearchHint = new Label { Text = "🔍", ForeColor = Theme.TextHint, AutoSize = true, Font = fontHints, Margin = new Padding(0), TextAlign = ContentAlignment.MiddleLeft };
-            lblSearchHint.MouseDown += DragWindow;
-            header.Controls.Add(lblSearchHint, 4, 0);
-
-            Panel pnlSearch = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 2, 8, 2), BackColor = Color.Transparent };
-            pnlSearch.MouseDown += DragWindow;
-            Label lblSearchIcon = new Label { Text = "🔍", ForeColor = Theme.TextDim, Dock = DockStyle.Left, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(0, 0, 4, 0) };
-            txtSearch = new TextBox { Font = fontInputs, Dock = DockStyle.Fill, BackColor = Theme.BgInput, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle };
-            txtSearch.TextChanged += TxtSearch_TextChanged;
-            // Dock order: fill first, left second
-            pnlSearch.Controls.Add(txtSearch);
-            pnlSearch.Controls.Add(lblSearchIcon);
-            header.Controls.Add(pnlSearch, 4, 1);
+            // --- Col 4: кнопка поиска 🔍 (слева в spacer) ---
+            Label btnSearch = new Label { Text = "🔍", Font = new Font("Segoe UI Emoji", 12),
+                ForeColor = Theme.Icon, AutoSize = true, Cursor = Cursors.Hand, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
+            btnSearch.Click += (s, ev) => ToggleSearchBar();
+            btnSearch.MouseEnter += (s, ev) => btnSearch.ForeColor = Theme.IconHover;
+            btnSearch.MouseLeave += (s, ev) => btnSearch.ForeColor = Theme.Icon;
+            new ToolTip().SetToolTip(btnSearch, Lang.Get("search"));
+            header.Controls.Add(btnSearch, 4, 1);
 
             // --- Col 5: иконки (справа, справа-налево) ---
             FlowLayoutPanel fpnlIcons = new FlowLayoutPanel();
@@ -209,13 +205,13 @@ namespace PingMonitor
             header.Controls.Add(fpnlIcons, 5, 0);
             header.SetRowSpan(fpnlIcons, 2);
 
-            // Порядок добавления = справа налево: exit, minimize, pin, info, settings
-            btnExit = new Label { Text = "✕", Font = new Font("Arial", 11, FontStyle.Regular),
+            // Порядок добавления = справа налево: exit, minimize, search, pin, info, settings
+                        btnExit = new Label { Text = "✕", Font = new Font("Arial", 11, FontStyle.Regular),
                 ForeColor = IconColor, AutoSize = true, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 0, 0) };
             btnExit.Click += (s, ev) => Application.Exit();
             btnExit.MouseEnter += (s, ev) => btnExit.ForeColor = Color.Red;
             btnExit.MouseLeave += (s, ev) => btnExit.ForeColor = IconColor;
-            new ToolTip().SetToolTip(btnExit, "Выход");
+            new ToolTip().SetToolTip(btnExit, Lang.Get("exit"));
             fpnlIcons.Controls.Add(btnExit);
 
             btnMinimize = new Label { Text = "—", Font = new Font("Arial", 12, FontStyle.Bold),
@@ -223,7 +219,7 @@ namespace PingMonitor
             btnMinimize.Click += (s, ev) => WindowState = FormWindowState.Minimized;
             btnMinimize.MouseEnter += (s, ev) => btnMinimize.ForeColor = Color.White;
             btnMinimize.MouseLeave += (s, ev) => btnMinimize.ForeColor = IconColor;
-            new ToolTip().SetToolTip(btnMinimize, "Свернуть");
+            new ToolTip().SetToolTip(btnMinimize, Lang.Get("minimize"));
             fpnlIcons.Controls.Add(btnMinimize);
 
             btnPin = new Label { Font = new Font("Segoe MDL2 Assets", 14),
@@ -233,7 +229,7 @@ namespace PingMonitor
                 if (this.TopMost) { btnPin.Text = "\uE840"; btnPin.ForeColor = Theme.IconPinned; }
                 else { btnPin.Text = "\uE718"; btnPin.ForeColor = IconColor; }
             };
-            new ToolTip().SetToolTip(btnPin, "Поверх всех окон");
+            new ToolTip().SetToolTip(btnPin, Lang.Get("pin_window"));
             fpnlIcons.Controls.Add(btnPin);
 
             btnInfo = new Label { Font = new Font("Segoe MDL2 Assets", 14),
@@ -241,7 +237,7 @@ namespace PingMonitor
             btnInfo.Click += (s, ev) => { new AboutForm().ShowDialog(); };
             btnInfo.MouseEnter += (s, ev) => btnInfo.ForeColor = Color.White;
             btnInfo.MouseLeave += (s, ev) => btnInfo.ForeColor = IconColor;
-            new ToolTip().SetToolTip(btnInfo, "Справка");
+            new ToolTip().SetToolTip(btnInfo, Lang.Get("info"));
             fpnlIcons.Controls.Add(btnInfo);
 
             btnSettings = new Label { Font = new Font("Segoe MDL2 Assets", 14),
@@ -249,10 +245,23 @@ namespace PingMonitor
             btnSettings.Click += BtnSettings_Click;
             btnSettings.MouseEnter += (s, ev) => btnSettings.ForeColor = Color.White;
             btnSettings.MouseLeave += (s, ev) => btnSettings.ForeColor = IconColor;
-            new ToolTip().SetToolTip(btnSettings, "Настройки");
+            new ToolTip().SetToolTip(btnSettings, Lang.Get("settings"));
             fpnlIcons.Controls.Add(btnSettings);
 
             panel1.Controls.Add(header);
+
+            // --- Search bar внутри хедера (появляется по 🔍) ---
+            _searchBar = new Panel { Dock = DockStyle.Bottom, Height = 30, BackColor = Theme.BgHeader, Visible = false };
+            Label lblSearchIconBar = new Label { Text = "🔍", ForeColor = Theme.TextDim, Dock = DockStyle.Left, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(14, 0, 4, 0) };
+            Label btnCloseSearch = new Label { Text = "✕", ForeColor = Theme.Icon, Dock = DockStyle.Right, AutoSize = true, Cursor = Cursors.Hand, Padding = new Padding(4, 0, 14, 0), TextAlign = ContentAlignment.MiddleCenter };
+            btnCloseSearch.Click += (s, ev) => { ToggleSearchBar(); txtSearch.Clear(); };
+            txtSearch = new TextBox { Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, BackColor = Theme.BgInput, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(4) };
+            txtSearch.TextChanged += TxtSearch_TextChanged;
+            txtSearch.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Escape) { ToggleSearchBar(); txtSearch.Clear(); } };
+            _searchBar.Controls.Add(txtSearch);
+            _searchBar.Controls.Add(lblSearchIconBar);
+            _searchBar.Controls.Add(btnCloseSearch);
+            panel1.Controls.Add(_searchBar);
 
             // --- DRAG & DROP ---
             flowLayoutPanel1.Dock = DockStyle.Fill;
@@ -393,7 +402,7 @@ namespace PingMonitor
         private void UpdateTemplatesList()
         {
             comboTemplates.Items.Clear();
-            comboTemplates.Items.Add("Обычный ввод (IP)");
+            comboTemplates.Items.Add(Lang.Get("normal_input"));
             foreach (var t in _appSettings.IpTemplates) comboTemplates.Items.Add(t);
             if (_appSettings.LastTemplateIndex >= 0 && _appSettings.LastTemplateIndex < comboTemplates.Items.Count)
                 comboTemplates.SelectedIndex = _appSettings.LastTemplateIndex;
@@ -424,8 +433,10 @@ namespace PingMonitor
             if (sf.ShowDialog() == DialogResult.OK)
             {
                 sf.ApplySettings(); _appSettings = sf.Settings;
+                Lang.SetRu(_appSettings.IsRussian);
                 ApplyTheme();
                 UpdateTemplatesList();
+                ApplyLanguage();
                 foreach (Control c in flowLayoutPanel1.Controls) if (c is PingTile pt) pt.UpdateSettings(_appSettings);
             }
         }
@@ -443,6 +454,22 @@ namespace PingMonitor
                 if (string.IsNullOrEmpty(finalAlias)) finalAlias = rawInput;
             }
             AddTile(finalAddress, finalAlias);
+        }
+
+        public void ApplyLanguage()
+        {
+            this.Text = Lang.Get("title");
+            buttonAdd.Text = Lang.Get("add");
+            foreach (Control c in flowLayoutPanel1.Controls)
+                if (c is PingTile pt) pt.UpdateUI();
+        }
+
+        private void ToggleSearchBar()
+        {
+            _searchBar.Visible = !_searchBar.Visible;
+            panel1.Height = _searchBar.Visible ? 92 : 62;
+            if (_searchBar.Visible) { txtSearch.Focus(); }
+            else { txtSearch.Clear(); }
         }
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)

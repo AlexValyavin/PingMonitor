@@ -72,7 +72,7 @@ namespace PingMonitor
             _settings = settings;
 
             RecalcWindowsFromSettings();
-            AddToLog("Мониторинг запущен");
+            AddToLog(Lang.Get("monitoring_started"));
             InitializeCustomUI();
             StartPing();
         }
@@ -111,7 +111,7 @@ namespace PingMonitor
         private void EditName()
         {
             string currentName = !string.IsNullOrEmpty(_alias) ? _alias : _address;
-            string newName = InputDialog.Show("Переименовать", "Введите новое имя для " + _address, currentName);
+            string newName = InputDialog.Show(Lang.Get("rename_title"), Lang.Get("rename_prompt") + _address, currentName);
 
             if (newName != null) // Если не нажали Отмена
             {
@@ -295,7 +295,7 @@ namespace PingMonitor
             UpdateHeaderUI(); // Устанавливаем текст адреса
 
             // --- Статистика снизу ---
-            lblStats = new Label { Text = "Waiting...", ForeColor = Theme.TextDim, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8), Dock = DockStyle.Bottom, TextAlign = ContentAlignment.MiddleCenter, Height = 20 };
+            lblStats = new Label { Text = Lang.Get("waiting"), ForeColor = Theme.TextDim, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8), Dock = DockStyle.Bottom, TextAlign = ContentAlignment.MiddleCenter, Height = 20 };
             this.Controls.Add(lblStats);
 
             // --- Пинг по центру ---
@@ -343,12 +343,12 @@ namespace PingMonitor
         {
             ContextMenuStrip menu = new ContextMenuStrip();
 
-            menu.Items.Add("✏ Переименовать", null, (s, e) => EditName());
+            menu.Items.Add(Lang.Get("rename"), null, (s, e) => EditName());
 
             // --- Период статистики (вложенное меню) ---
-            ToolStripMenuItem statsPeriod = new ToolStripMenuItem("📊 Период статистики");
+            ToolStripMenuItem statsPeriod = new ToolStripMenuItem(Lang.Get("stats_period"));
             int[] periodValues = { 600, 1800, 3600, 10800, 21600, -1 };
-            string[] periodNames = { "10 минут", "30 минут", "1 час", "3 часа", "6 часов", "С начала запуска" };
+            string[] periodNames = { Lang.Get("period_10m"), Lang.Get("period_30m"), Lang.Get("period_1h"), Lang.Get("period_3h"), Lang.Get("period_6h"), Lang.Get("period_all") };
             for (int i = 0; i < periodValues.Length; i++)
             {
                 int val = periodValues[i];
@@ -366,14 +366,14 @@ namespace PingMonitor
             menu.Items.Add(statsPeriod);
             // -----------------------------------------
 
-            menu.Items.Add("📄 Журнал событий", null, (s, e) => ShowLogWindow());
-            menu.Items.Add("Открыть CMD (Ping -t)", null, (s, e) => { try { Process.Start("cmd.exe", $"/k ping {_address} -t"); } catch { } });
-            menu.Items.Add("Trace Route", null, (s, e) => { try { Process.Start("cmd.exe", $"/k tracert {_address}"); } catch { } });
-            var itemGraph = new ToolStripMenuItem("Показывать график") { Checked = _showGraph, CheckOnClick = true };
+            menu.Items.Add(Lang.Get("log"), null, (s, e) => ShowLogWindow());
+            menu.Items.Add(Lang.Get("cmd_ping"), null, (s, e) => { try { Process.Start("cmd.exe", $"/k ping {_address} -t"); } catch { } });
+            menu.Items.Add(Lang.Get("tracert"), null, (s, e) => { try { Process.Start("cmd.exe", $"/k tracert {_address}"); } catch { } });
+            var itemGraph = new ToolStripMenuItem(Lang.Get("show_graph")) { Checked = _showGraph, CheckOnClick = true };
             itemGraph.Click += (s, e) => { _showGraph = itemGraph.Checked; Invalidate(); };
             menu.Items.Add(itemGraph);
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Копировать адрес", null, (s, e) => Clipboard.SetText(_address));
+            menu.Items.Add(Lang.Get("copy_addr"), null, (s, e) => Clipboard.SetText(_address));
 
             this.ContextMenuStrip = menu;
             foreach (Control c in this.Controls) if (c != btnClose) c.ContextMenuStrip = menu;
@@ -482,7 +482,7 @@ namespace PingMonitor
             if (_lastStateWasSuccess == null) { _lastStateWasSuccess = currentSuccess; return; }
             if (_lastStateWasSuccess != currentSuccess)
             {
-                AddToLog(currentSuccess ? $"✅ Связь восстановлена (UP). Ping: {rtt}ms" : "⛔ Связь потеряна (DOWN).");
+                AddToLog(currentSuccess ? $"{Lang.Get("connection_up")}. Ping: {rtt}{Lang.Get("ping_ms")}" : Lang.Get("connection_down"));
                 _lastStateWasSuccess = currentSuccess;
             }
         }
@@ -500,7 +500,7 @@ namespace PingMonitor
             lock (_statsLock) { recentLossCount = _history.Count(x => !x); totalCount = _history.Count; }
             double recentLossPercent = totalCount > 0 ? (double)recentLossCount / totalCount * 100 : 0;
             string periodName = PeriodName(_statsWindowSec);
-            string statsText = $"Loss: {recentLossPercent:F1}% ({periodName})";
+            string statsText = $"{Lang.Get("loss")}: {recentLossPercent:F1}% ({periodName})";
             if (InvokeRequired) { try { Invoke(new Action(() => lblStats.Text = statsText)); } catch { } return; }
             lblStats.Text = statsText;
         }
@@ -539,13 +539,13 @@ namespace PingMonitor
 
             _currentStatusColor = statusColor;
             string periodName = PeriodName(_statsWindowSec);
-            string statsText = $"Loss: {recentLossPercent:F1}% ({periodName})";
+            string statsText = $"{Lang.Get("loss")}: {recentLossPercent:F1}% ({periodName})";
 
             if (InvokeRequired) { try { Invoke(new Action(() => UpdateUI(success, rtt))); } catch { } return; }
 
             if (!success)
             {
-                lblPing.Text = "TIMEOUT";
+                lblPing.Text = Lang.Get("timeout");
                 lblPing.Font = new Font("Segoe UI", 16, FontStyle.Bold); // Чуть меньше для ошибки
             }
             else
@@ -555,6 +555,13 @@ namespace PingMonitor
             }
             pnlStatusIndicator.BackColor = statusColor;
             lblStats.Text = statsText;
+        }
+
+        public void UpdateUI()
+        {
+            // Refresh context menu labels and stats text
+            SetupContextMenu();
+            UpdateStatsLabel();
         }
 
         public void Stop() { _cts?.Cancel(); }

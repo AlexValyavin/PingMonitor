@@ -18,8 +18,8 @@ namespace PingMonitor
             label.Text = promptText;
             textBox.Text = defaultValue;
 
-            buttonOk.Text = "OK";
-            buttonCancel.Text = "Отмена";
+            buttonOk.Text = Lang.Get("ok");
+            buttonCancel.Text = Lang.Get("input_cancel");
             buttonOk.DialogResult = DialogResult.OK;
             buttonCancel.DialogResult = DialogResult.Cancel;
 

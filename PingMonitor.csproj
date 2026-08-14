@@ -79,6 +79,7 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="InputDialog.cs" />
+    <Compile Include="Lang.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>
