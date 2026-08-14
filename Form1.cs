@@ -45,6 +45,13 @@ namespace PingMonitor
             }
         }
 
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // Иконку ставим ПОСЛЕ создания хендла — иначе FormBorderStyle=None её сбрасывает
+            CreateAppIcon();
+        }
+
         private void DragWindow(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left) { ReleaseCapture(); SendMessage(Handle, 0xA1, 0x2, 0); }
@@ -115,8 +122,6 @@ namespace PingMonitor
             this.StartPosition = FormStartPosition.CenterScreen;
             this.ShowIcon = true;
             this.ShowInTaskbar = true;
-            // Программная иконка — зелёная точка (пинг-статус), без внешних файлов
-            CreateAppIcon();
             this.Padding = new Padding(1);
             this.MinimumSize = new Size(MinWindowWidth, 150);
 
