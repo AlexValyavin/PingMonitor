@@ -127,8 +127,7 @@ $@"PingMonitor
 2. ЗАПРЕЩЕНО продавать данную программу или её модификации.
 3. Программа поставляется ""КАК ЕСТЬ"", без гарантий.
 
-Если у вас есть идеи по улучшению — пишите разработчику!
-alexval419@gmail.com";
+Если у вас есть идеи по улучшению — создайте Issue на GitHub! (https://github.com/AlexValyavin/PingMonitor/issues)";
 
             this.Controls.Add(rtb);
             rtb.BringToFront();

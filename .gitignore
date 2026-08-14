@@ -1,5 +1,23 @@
+# IDE
 .vs/
-bin/
-obj/
+.vscode/
+.idea/
 *.user
 *.suo
+*.userprefs
+
+# Build
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+
+# Config
+*.config.user
+*.config.bak
+appsettings.*.local.json
+
+# System
+Thumbs.db
+.DS_Store
