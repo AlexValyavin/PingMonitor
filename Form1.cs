@@ -50,6 +50,12 @@ namespace PingMonitor
             base.OnHandleCreated(e);
             // Иконку ставим ПОСЛЕ создания хендла — иначе FormBorderStyle=None её сбрасывает
             CreateAppIcon();
+            // Принудительно проталкиваем иконку в окно (WM_SETICON: 0x80)
+            if (this.Icon != null)
+            {
+                SendMessage(this.Handle, 0x80, 0, this.Icon.Handle.ToInt32());   // ICON_SMALL (16x16)
+                SendMessage(this.Handle, 0x80, 1, this.Icon.Handle.ToInt32());   // ICON_BIG (32x32)
+            }
         }
 
         private void DragWindow(object sender, MouseEventArgs e)
@@ -95,22 +101,36 @@ namespace PingMonitor
 
         private void CreateAppIcon()
         {
-            using (Bitmap bmp = new Bitmap(16, 16))
-            using (Graphics g = Graphics.FromImage(bmp))
+            try
             {
+                // Яркая иконка: зелёная точка на белом круге — видна на любой теме панели задач
+                Bitmap bmp = new Bitmap(32, 32);
+                Graphics g = Graphics.FromImage(bmp);
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.Clear(Color.Transparent);
-                using (SolidBrush bg = new SolidBrush(Color.FromArgb(30, 30, 30)))
-                    g.FillEllipse(bg, 0, 0, 15, 15);
+                // Белая подложка-круг (видна на тёмной панели)
+                using (SolidBrush bg = new SolidBrush(Color.White))
+                    g.FillEllipse(bg, 1, 1, 30, 30);
+                // Зелёная точка — «всё ок»
                 using (SolidBrush dot = new SolidBrush(Color.FromArgb(46, 204, 113)))
-                    g.FillEllipse(dot, 3, 3, 10, 10);
-                using (Pen pen = new Pen(Color.White, 1.5f))
+                    g.FillEllipse(dot, 7, 7, 18, 18);
+                // Белый крестик внутри
+                using (Pen pen = new Pen(Color.White, 3f))
                 {
-                    g.DrawLine(pen, 8, 5, 8, 11);
-                    g.DrawLine(pen, 5, 8, 11, 8);
+                    g.DrawLine(pen, 16, 11, 16, 21);
+                    g.DrawLine(pen, 11, 16, 21, 16);
                 }
-                // Clone() создаёт копию иконки со своим хендлом — bmp можно спокойно диспозить
+                // Тонкая серая окантовка — видна на светлой панели
+                using (Pen border = new Pen(Color.FromArgb(120, 120, 120), 1f))
+                    g.DrawEllipse(border, 1, 1, 30, 30);
+
                 this.Icon = (Icon)Icon.FromHandle(bmp.GetHicon()).Clone();
+                g.Dispose();
+                bmp.Dispose();
+            }
+            catch
+            {
+                this.Icon = SystemIcons.Information;
             }
         }
 
