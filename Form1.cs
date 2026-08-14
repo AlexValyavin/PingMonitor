@@ -76,13 +76,37 @@ namespace PingMonitor
                 if (c is PingTile pt) pt.UpdateSettings(_appSettings);
         }
 
+        private void CreateAppIcon()
+        {
+            using (Bitmap bmp = new Bitmap(16, 16))
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                using (SolidBrush bg = new SolidBrush(Color.FromArgb(30, 30, 30)))
+                    g.FillEllipse(bg, 0, 0, 15, 15);
+                using (SolidBrush dot = new SolidBrush(Color.FromArgb(46, 204, 113)))
+                    g.FillEllipse(dot, 3, 3, 10, 10);
+                using (Pen pen = new Pen(Color.White, 1.5f))
+                {
+                    g.DrawLine(pen, 8, 5, 8, 11);
+                    g.DrawLine(pen, 5, 8, 11, 8);
+                }
+                // Clone() создаёт копию иконки со своим хендлом — bmp можно спокойно диспозить
+                this.Icon = (Icon)Icon.FromHandle(bmp.GetHicon()).Clone();
+            }
+        }
+
         private void SetupFormDesign()
         {
             this.FormBorderStyle = FormBorderStyle.None;
             this.Text = Lang.Get("title");
             this.BackColor = Theme.BgWindow;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            this.ShowIcon = true;
+            this.ShowInTaskbar = true;
+            // Программная иконка — зелёная точка (пинг-статус), без внешних файлов
+            CreateAppIcon();
             this.Padding = new Padding(1);
             this.MinimumSize = new Size(MinWindowWidth, 150);
 
