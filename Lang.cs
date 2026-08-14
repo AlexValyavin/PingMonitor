@@ -12,7 +12,7 @@ namespace PingMonitor
         static Lang()
         {
             // === Form1 ===
-            Ru["title"] = "NetMonitor Pro";                   En["title"] = "NetMonitor Pro";
+            Ru["title"] = "PingMonitor";                      En["title"] = "PingMonitor";
             Ru["mode"] = "Режим / Шаблон";                    En["mode"] = "Mode / Template";
             Ru["ip_hint"] = "IP / ID";                         En["ip_hint"] = "IP / ID";
             Ru["name_hint"] = "Имя (Опц.)";                   En["name_hint"] = "Name (Opt.)";
