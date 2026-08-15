@@ -48,8 +48,16 @@ namespace PingMonitor
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            // Иконку ставим ПОСЛЕ создания хендла — иначе FormBorderStyle=None её сбрасывает
-            CreateAppIcon();
+            // Иконку ставим ПОСЛЕ создания хендла — иначе FormBorderStyle=None её сбрасывает.
+            // Берём прямо из EXE (ApplicationIcon в csproj) — одна иконка и в проводнике, и в панели задач.
+            try
+            {
+                this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch
+            {
+                this.Icon = SystemIcons.Information;
+            }
             // Принудительно проталкиваем иконку в окно (WM_SETICON: 0x80)
             if (this.Icon != null)
             {
@@ -97,41 +105,6 @@ namespace PingMonitor
             if (_searchBar != null) _searchBar.BackColor = Theme.BgHeader;
             foreach (Control c in flowLayoutPanel1.Controls)
                 if (c is PingTile pt) pt.UpdateSettings(_appSettings);
-        }
-
-        private void CreateAppIcon()
-        {
-            try
-            {
-                // Яркая иконка: зелёная точка на белом круге — видна на любой теме панели задач
-                Bitmap bmp = new Bitmap(32, 32);
-                Graphics g = Graphics.FromImage(bmp);
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-                // Белая подложка-круг (видна на тёмной панели)
-                using (SolidBrush bg = new SolidBrush(Color.White))
-                    g.FillEllipse(bg, 1, 1, 30, 30);
-                // Зелёная точка — «всё ок»
-                using (SolidBrush dot = new SolidBrush(Color.FromArgb(46, 204, 113)))
-                    g.FillEllipse(dot, 7, 7, 18, 18);
-                // Белый крестик внутри
-                using (Pen pen = new Pen(Color.White, 3f))
-                {
-                    g.DrawLine(pen, 16, 11, 16, 21);
-                    g.DrawLine(pen, 11, 16, 21, 16);
-                }
-                // Тонкая серая окантовка — видна на светлой панели
-                using (Pen border = new Pen(Color.FromArgb(120, 120, 120), 1f))
-                    g.DrawEllipse(border, 1, 1, 30, 30);
-
-                this.Icon = (Icon)Icon.FromHandle(bmp.GetHicon()).Clone();
-                g.Dispose();
-                bmp.Dispose();
-            }
-            catch
-            {
-                this.Icon = SystemIcons.Information;
-            }
         }
 
         private void SetupFormDesign()

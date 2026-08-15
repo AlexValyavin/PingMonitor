@@ -22,3 +22,5 @@ appsettings.*.local.json
 Thumbs.db
 .DS_Store
 article.md
+article-pikabu.md
+screenshots/taskbar-*.png
